@@ -150,11 +150,11 @@ class LFUCache:
         self.node_for_key.pop(removed[0])
 
     # key exists, so update its value
-      if key in self.node_for_key:
-         self._update(key, value)
+    if key in self.node_for_key:
+        self._update(key, value)
 
     # key does not exist, so add it
-      else:
+    else:
 
         # update dicts
          self.node_for_key[key] = (value, 1)
