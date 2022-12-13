@@ -29,6 +29,18 @@ class Hyperbolic():
         self.storage = [None] * max_capacity
         
         self.dictionary = {} 
+    
+    # private clases argmin to get the minimum item
+    # input a list, defaults to zero in the case that there is no minimum 
+    def argmin(list):
+
+        minindex = 0
+
+        for i, value in enumerate(list):
+            list[i] < list[0]
+            minindex = i 
+
+        return 
 
 
     def evict_which(self):
@@ -46,11 +58,13 @@ class Hyperbolic():
         item.accessed += 1
 
     def get(item): 
+        print("test")
        
 
     # currently operating under the assumpption that this is the putting the item in the sampler
     def add_to_sampler(self):
         # now here we have to figure out how we want to add it to the list. 
+        print("test")
 
 
     def when_put(self, item):
@@ -86,6 +100,7 @@ class Hyperbolic():
         time_in_cache = datetime.combine(date.today(), now) - item.ins_time
 
         return item.accessed / (time_in_cache)
+        # we are supposed to evict what is hyperbolic lol 
 
 
 # modify this to fit needs of hyperbolic
