@@ -11,7 +11,7 @@ type CacheItem struct {
 	// identifies item
 	key string
 	// value of item
-	value interface{}
+	value []byte
 	// how many times the item is accessed
 	access_count int
 	// the date and time the item was first inserted
@@ -27,7 +27,7 @@ type HyperbolicCache struct {
 	size int
 
 	// map from keys to items in cache
-	mapping map[string]CacheItem
+	mapping map[string]*CacheItem
 }
 
 // creates a new, empty Hyperbolic cache
@@ -36,12 +36,13 @@ func NewHyperbolicCache(max_capacity int) *HyperbolicCache {
 	return &HyperbolicCache{
 		max_capacity: max_capacity,
 		size:         0,
-		mapping:      make(map[string]CacheItem, max_capacity),
+		mapping:      make(map[string]*CacheItem, max_capacity),
 	}
 }
 
 // given a key, return the value and a boolean
-func (cache *HyperbolicCache) Get(key string) (value interface{}, ok bool) {
+// func (cache *HyperbolicCache) Get(key string) (value interface{}, ok bool) {
+func (cache *HyperbolicCache) Get(key string) (value []byte, ok bool) {
 	item, ok := cache.mapping[key]
 	item.access_count += 1
 	value = item.value
@@ -49,7 +50,8 @@ func (cache *HyperbolicCache) Get(key string) (value interface{}, ok bool) {
 	return value, ok
 }
 
-func (cache *HyperbolicCache) Set(key string, value interface{}) bool {
+// func (cache *HyperbolicCache) Set(key string, value interface{}) bool {
+func (cache *HyperbolicCache) Set(key string, value []byte) bool {
 
 	// check for max capacity first
 
@@ -67,13 +69,15 @@ func (cache *HyperbolicCache) Set(key string, value interface{}) bool {
 
 	//otherwise, insert to cache
 
-	cache.mapping[key] = CacheItem{key: key, value: value, access_count: 0, insert_time: time.Now()}
+	// is this how we do it? 
+	cache.mapping[key] = &CacheItem{key: key, value: value, access_count: 0, insert_time: time.Now()}
 
 	return true
 }
 
+// maybe not have a pointer method?
+//func (item *CacheItem) calc_p() (index float32) {
 func (item *CacheItem) calc_p() (index float32) {
-
 	time_in_cache := time.Now().Sub(item.insert_time)
 
 	return float32(item.access_count) / float32(time_in_cache.Milliseconds()) // I converted it to float
