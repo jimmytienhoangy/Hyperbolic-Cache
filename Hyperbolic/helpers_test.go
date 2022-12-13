@@ -12,8 +12,8 @@ import (
 // this cache.
 func cacheType(cache Cache) string {
 	switch cache.(type) {
-	case *LRU:
-		return "LRU"
+	// case *LRU:
+	// 	return "LRU"
 	case *FIFO:
 		return "FIFO"
 	default:

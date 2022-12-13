@@ -1,49 +1,124 @@
 package cache
 
-// import list from Go's Standard library
 import (
-	"container/list"
+	//"container/list"
+	"math/rand"
+	"time"
 )
 
-// A FIFO is a fixed-size, in-memory cache with first-in first-out eviction
-type HyperbolicCache struct {
+// items that will go in cache
+type CacheItem struct {
+	// identifies item
+	key string
+	// value of item
+	value interface{}
+	// how many times the item is accessed
+	access_count int
+	// the date and time the item was first inserted
+	insert_time time.Time
+}
 
-	// total number of bytes the FIFO can store
+//
+type HyperbolicCache struct {
+	// max number of items the cache can hold
 	max_capacity int
 
-	// total number of current bytes in the FIFO
-	current_capacity int
+	// current number of items in the cache
+	size int
 
-	// mapping of keys to values for constant time operations
-	mapping map[string][]byte
-
-	// linked list of string keys in the FIFO
-	linked_list *list.List
-
-	// current number of bindings in the FIFO
-	num_bindings int
-
-	// number of hits from the FIFO
-	hits int
-
-	// number of misses from the FIFO
-	misses int
+	// map from keys to items in cache
+	mapping map[string]CacheItem
 }
 
-// NewFIFO returns a pointer to a new FIFO with a capacity to store limit bytes
-func NewHyperbolicCache(limit int) *HyperbolicCache {
+// creates a new, empty Hyperbolic cache
+func NewHyperbolicCache(max_capacity int) *HyperbolicCache {
 
-	// create and initialize a new FIFO
 	return &HyperbolicCache{
-		max_capacity:     limit,
-		current_capacity: 0,
-		mapping:          make(map[string][]byte, limit),
-		linked_list:      list.New(),
-		num_bindings:     0,
-		hits:             0,
-		misses:           0,
+		max_capacity: max_capacity,
+		size:         0,
+		mapping:      make(map[string]CacheItem, max_capacity),
 	}
 }
+
+// given a key, return the value and a boolean
+func (cache *HyperbolicCache) Get(key string) (value interface{}, ok bool) {
+	item, ok := cache.mapping[key]
+	item.access_count += 1
+	value = item.value
+
+	return value, ok
+}
+
+func (cache *HyperbolicCache) Set(key string, value interface{}) bool {
+
+	// check for max capacity first
+
+	// if cache is at max capacity, evict
+
+	// otherwise, insert into the cache
+
+	// do the eviction
+	if cache.size == cache.max_capacity {
+		var item_to_evict string = cache.Evict_which() // key that will be evicted
+		delete(cache.mapping, item_to_evict)
+	}
+
+	// some sort of return false here
+
+	//otherwise, insert to cache
+
+	cache.mapping[key] = CacheItem{key: key, value: value, access_count: 0, insert_time: time.Now()}
+
+	return true
+}
+
+func (item *CacheItem) calc_p() (index float32) {
+
+	time_in_cache := time.Now().Sub(item.insert_time)
+
+	return float32(item.access_count) / float32(time_in_cache.Milliseconds()) // I converted it to float
+
+}
+
+// Note: This assumes all keys are unique:
+func (cache *HyperbolicCache) Evict_which() (key string) {
+	//sampled_items := rand.Perm(cache.size)[0:5] // generate a random order of this sizehttps://golangbyexample.com/generate-random-array-slice-golang/
+
+	// get a randomly ordered slice of keys
+	keys := make([]string, len(cache.mapping))
+
+	i := 0
+	for k := range cache.mapping {
+		keys[i] = k
+		i++
+	}
+
+	rand.Shuffle(len(keys), func(i, j int) {
+		keys[i], keys[j] = keys[j], keys[i]
+	})
+
+	sampled_items := keys[0:5]
+
+	// get the minimum
+	minimum := keys[0]
+	minvalue := cache.mapping[keys[0]].calc_p()
+
+	for _, key := range sampled_items {
+		if cache.mapping[key].calc_p() < minvalue {
+			minvalue = cache.mapping[key].calc_p()
+			minimum = key
+		}
+	}
+
+	return minimum
+}
+
+// sampled_items = random_sample(S)
+// return argmin(p(i) for i in sampled_items)
+
+// Don't know how I feel about stats here
+
+//Additional Code
 
 // MaxStorage returns the maximum number of bytes this FIFO can store
 func (cache *HyperbolicCache) MaxStorage() int {
@@ -52,114 +127,20 @@ func (cache *HyperbolicCache) MaxStorage() int {
 
 // RemainingStorage returns the number of unused bytes available in this FIFO
 func (cache *HyperbolicCache) RemainingStorage() int {
-	return cache.max_capacity - cache.current_capacity
+	return cache.max_capacity - cache.size
 }
 
-// Get returns the value associated with the given key, if it exists.
-// ok is true if a value was found and false otherwise.
-func (cache *HyperbolicCache) Get(key string) (value []byte, ok bool) {
+// Stats returns statistics about how many search hits and misses have occurred.
+func (cache *HyperbolicCache) Stats() *Stats {
+}
 
-	// get the value associated with key
-	value, ok = cache.mapping[key]
-
-	// update hits/misses
-	if ok {
-		cache.hits++
-	} else {
-		cache.misses++
-	}
-
-	return value, ok
+// Len returns the number of bindings in the FIFO.
+func (cache *HyperbolicCache) Len() int {
+	return cache.size
 }
 
 // Remove removes and returns the value associated with the given key, if it exists.
 // ok is true if a value was found and false otherwise
 func (cache *HyperbolicCache) Remove(key string) (value []byte, ok bool) {
 
-	// get the value associated with key
-	value, ok = cache.mapping[key]
-
-	// value associated with key does not exist
-	if !ok {
-		return nil, false
-	}
-
-	// remove from the hashmap
-	delete(cache.mapping, key)
-
-	// remove from the linkedlist
-	for element := cache.linked_list.Front(); element != nil; element = element.Next() {
-		if element.Value.(string) == key {
-			cache.linked_list.Remove(element)
-		}
-	}
-
-	// update current capacity and number of bindings
-	cache.current_capacity -= (len([]byte(key)) + len(value))
-	cache.num_bindings--
-
-	return value, true
 }
-
-// Set associates the given value with the given key, possibly evicting values
-// to make room. Returns true if the binding was added successfully, else false.
-func (cache *HyperbolicCache) Set(key string, value []byte) bool {
-
-	// capacity to be added
-	insert_capacity := (len([]byte(key)) + len(value))
-
-	// item value pair is too large
-	if (insert_capacity) > cache.max_capacity {
-		return false
-	}
-
-	// check if the key already has a value
-	existing_value, ok := cache.mapping[key]
-	if ok {
-		// replace value, update capacity, and return
-		cache.current_capacity -= len(existing_value)
-		cache.current_capacity += len(value)
-		cache.mapping[key] = value
-		return true
-	}
-
-	// if not enough space, remove until there is enough space
-	for insert_capacity > cache.RemainingStorage() {
-
-		// remove the first value
-		first := cache.linked_list.Front()
-		cache.linked_list.Remove(first)
-
-		key_to_remove := first.Value.(string)
-
-		// update the capacity
-		cache.current_capacity -= len(cache.mapping[key_to_remove])
-		cache.current_capacity -= len([]byte(key_to_remove))
-
-		// remove the first value from the map
-		delete(cache.mapping, key_to_remove)
-		cache.num_bindings--
-	}
-
-	// insert the key into the linkedlist and update the corresponding hashmap value
-	cache.linked_list.PushBack(key)
-	cache.mapping[key] = value
-
-	// update the capacity and nubmer of bindings
-	cache.current_capacity += insert_capacity
-	cache.num_bindings++
-
-	return true
-}
-
-// Len returns the number of bindings in the FIFO.
-func (cache *HyperbolicCache) Len() int {
-	return cache.num_bindings
-}
-
-// Stats returns statistics about how many search hits and misses have occurred.
-func (cache *HyperbolicCache) Stats() *Stats {
-	return &Stats{Hits: cache.hits, Misses: cache.misses}
-}
-
-// Don't know how I feel about stats here

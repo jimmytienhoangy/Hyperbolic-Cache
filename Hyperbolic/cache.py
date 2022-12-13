@@ -116,6 +116,8 @@ class LFUCache:
       # in the dictionary, a default value is automatically given to that key. 
       self.node_for_freq = collections.defaultdict(collections.OrderedDict)
 
+      # so -> orderedDict -> preserves the order inwhich tehy are inserted, and that is stored within a defaultdict 
+
       # key -> (value, freq)
       self.node_for_key = dict()
 
