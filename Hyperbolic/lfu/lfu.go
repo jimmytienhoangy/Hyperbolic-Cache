@@ -4,31 +4,31 @@ import (
 	"math"
 )
 
-// A CacheItem is an item that will go in the cache
+// A LFUCacheItem is an item with metadata that
+// goes in a LFU.
 type LFUCacheItem struct {
 
-	// size of value (bytes)
+	// size of item's value (bytes)
 	value_size int
 
 	// how many times the item is accessed
 	access_count int
-
 }
 
-// LFU is a cache that follows the LFU algorithm
+// A LFU is a cache that follows the LFU algorithm.
 type LFU struct {
 
-	// max number of bytes the cache can hold
+	// maximum number of bytes the cache can hold
 	max_capacity int
 
-	// total size of items that are stored in the cache
+	// total number of bytes currently in the cache
 	size int
 
 	// number of bindings in cache
 	num_bindings int
 
-	// map from keys to items in cache
-	mapping map[string]*LFUCacheItem
+	// map of keys to items in the cache
+	keys_to_items map[string]*LFUCacheItem
 
 	// number of hits
 	hits int
@@ -37,24 +37,24 @@ type LFU struct {
 	misses int
 }
 
-// NewHyperbolicCache creates a new, empty Hyperbolic cache
-func newLFU(max_capacity int) *LFU {
+// NewLFU creates a new, empty LFU.
+func NewLFU(max_capacity int) *LFU {
 
 	return &LFU{
-		max_capacity: max_capacity,
-		size:         0,
-		num_bindings: 0,
-		mapping:      make(map[string]*LFUCacheItem, max_capacity),
-		hits:         0,
-		misses:       0,
+		max_capacity:  max_capacity,
+		size:          0,
+		num_bindings:  0,
+		keys_to_items: make(map[string]*LFUCacheItem, max_capacity),
+		hits:          0,
+		misses:        0,
 	}
 }
 
-// Given a key, Get return the corresponding value's size and a success boolean
+// Given a key, Get returns the corresponding value's size and a success boolean.
 func (cache *LFU) Get(key string) (value_size int, ok bool) {
 
 	// retrieve item associated with key
-	item, ok := cache.mapping[key]
+	item, ok := cache.keys_to_items[key]
 
 	value_size = 0
 
@@ -76,7 +76,7 @@ func (cache *LFU) Get(key string) (value_size int, ok bool) {
 	return value_size, ok
 }
 
-// Given a key and value, Set add them to the cache
+// Given a key and its value's size, Set adds them to the cache.
 func (cache *LFU) Set(key string, value_size int) bool {
 
 	// size of value to be added
@@ -91,20 +91,23 @@ func (cache *LFU) Set(key string, value_size int) bool {
 	}
 
 	// check if the key already has a value
-	existing_item, ok := cache.mapping[key]
+	existing_item, ok := cache.keys_to_items[key]
+
 	if ok {
-		// replace value size, update size of cache, and return
+		// replace value size, update accesses, and update size of cache
 		cache.size -= existing_item.value_size
 		cache.size += value_length
+		cache.keys_to_items[key].value_size = value_length
+		cache.keys_to_items[key].access_count += 1
 
-		// update value size and access count of the actual item
-		cache.mapping[key].value_size = value_length
-		cache.mapping[key].access_count += 1
+		// in the case that a value change for a key resulted in
+		// a size overload, remove until the size meets the capacity
+		for cache.size > cache.max_capacity {
 
-		// remove until the size meets the capacity 
-		for (cache.size > cache.max_capacity) {
+			// find what key, value pair we should evict
 			key_to_remove := cache.Evict_Which()
-			cache.size -= (cache.mapping[key_to_remove].value_size + len([]byte(key_to_remove)))
+
+			// remove the chosen key (capacity is being updated in Remove())
 			_, success := cache.Remove(key_to_remove)
 
 			if success {
@@ -115,43 +118,49 @@ func (cache *LFU) Set(key string, value_size int) bool {
 		return true
 	}
 
-	// if not enough space, evict until there is enough space
-	for insert_size > (cache.max_capacity - cache.size) {
+	// if not enough space and an item with the key does not exist,
+	// evict until there is enough space
+	for insert_size > cache.RemainingStorage() {
 
 		// find what key, value pair we should evict
 		key_to_remove := cache.Evict_Which()
 
-		// remove the chosen key
+		// remove the chosen key (capacity is being updated in Remove())
 		_, success := cache.Remove(key_to_remove)
 		if success {
 			cache.num_bindings -= 1
 		}
+
 	}
 
-	cache.mapping[key] = &LFUCacheItem{value_size: value_length, access_count: 1,}
+	// add new item with key and value length
+	cache.keys_to_items[key] = &LFUCacheItem{
+		value_size:   value_length,
+		access_count: 1}
 
+	// update cache fields
 	cache.size += insert_size
 	cache.num_bindings += 1
 
 	return true
 }
 
-
-// Evict_Which() is an algorithm to select which item in the cache to evict
+// Evict_Which() is an algorithm to select which item in the cache to evict.
 func (cache *LFU) Evict_Which() (key string) {
 
-	if len(cache.mapping) == 0 {
+	// make sure there are items in the cache
+	if len(cache.keys_to_items) < 1 {
 		return ""
 	}
 
-	// iterate through mapping to find the item with 
+	// iterate through keys_to_items to find the item with
 	// the least number of accesses
 	minimum := ""
 	minValue := math.MaxInt32
 
-	for j := range cache.mapping {
-		if cache.mapping[j].access_count < minValue {
-			minValue = cache.mapping[j].access_count
+	for j := range cache.keys_to_items {
+		if cache.keys_to_items[j].access_count < minValue {
+			minValue = cache.keys_to_items[j].access_count
 			minimum = j
 		}
 	}
@@ -159,12 +168,12 @@ func (cache *LFU) Evict_Which() (key string) {
 	return minimum
 }
 
-// MaxStorage returns the maximum number of bytes this cache can store
+// MaxStorage returns the maximum number of bytes this cache can store.
 func (cache *LFU) MaxStorage() int {
 	return cache.max_capacity
 }
 
-// RemainingStorage returns the number of unused bytes available in this cache
+// RemainingStorage returns the number of unused bytes available in this cache.
 func (cache *LFU) RemainingStorage() int {
 	return cache.max_capacity - cache.size
 }
@@ -180,20 +189,20 @@ func (cache *LFU) Len() int {
 }
 
 // Remove removes and returns the value associated with the given key, if it exists.
-// ok is true if a value size was found and false otherwise
+// ok is true if a value size was found and false otherwise.
 func (cache *LFU) Remove(key string) (value_size int, ok bool) {
 
 	// check if there is an item associated with key
-	item, ok := cache.mapping[key]
+	item, ok := cache.keys_to_items[key]
 	if !ok {
 		return 0, false
 	}
 
 	// update the capacity
-	cache.size -= (cache.mapping[key].value_size + len([]byte(key)))
+	cache.size -= (cache.keys_to_items[key].value_size + len([]byte(key)))
 
-	// remove from hashmap
-	delete(cache.mapping, key)
+	// remove the key from the cache
+	delete(cache.keys_to_items, key)
 
 	return item.value_size, true
 }

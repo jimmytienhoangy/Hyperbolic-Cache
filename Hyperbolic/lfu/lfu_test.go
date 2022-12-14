@@ -1,9 +1,8 @@
 /******************************************************************************
- * hyperbolic_test.go
+ * lfu_test.go
  * Authors: Reuben Agogoe, Stephen Dong, Jimmy Hoang
  * Usage: `go test`  or  `go test -v`
- * Description:
- *    A unit testing suite for hyperbolic.go.
+ * Description: A unit testing suite for lfu.go.
  ******************************************************************************/
 
 package cache
@@ -31,7 +30,7 @@ import (
 // (get and set methods)
 func TestHyperbolic(t *testing.T) {
 	capacity := 64
-	hyperbolic := newLFU(capacity)
+	hyperbolic := NewLFU(capacity)
 
 	for i := 0; i < 4; i++ {
 		key := fmt.Sprintf("key%d", i)
@@ -205,7 +204,7 @@ func wait() {
 // Test whether the hyperbolic function is working
 func TestHyperbolicFunction(t *testing.T) {
 	capacity := 10
-	cache := newLFU(capacity)
+	cache := NewLFU(capacity)
 	checkCapacity(t, cache, capacity)
 
 	// test states and cities to insert as bindings
@@ -241,7 +240,7 @@ func TestHyperbolicFunction(t *testing.T) {
 	cache.Set("f", len([]byte("f")))
 	fmt.Println("test2")
 
-	for j := range cache.mapping {
+	for j := range cache.keys_to_items {
 		fmt.Println(j)
 	}
 
@@ -259,7 +258,7 @@ func TestHyperbolicFunction(t *testing.T) {
 // Test whether the hyperbolic function is working
 func TestHyperbolicFunction2(t *testing.T) {
 	capacity := 10
-	cache := newLFU(capacity)
+	cache := NewLFU(capacity)
 
 	// test states and cities to insert as bindings
 	var values [3]string
@@ -317,7 +316,7 @@ func TestHyperbolicFunction2(t *testing.T) {
 
 	_, ok2 := cache.Get("cd")
 
-	for j := range cache.mapping {
+	for j := range cache.keys_to_items {
 		fmt.Println(j)
 	}
 
@@ -342,7 +341,7 @@ func TestHyperbolicFunction3(t *testing.T) {
 
 	// set the capacity
 	capacity := 1000 //(?)
-	hyperbolic_cache := newLFU(capacity)
+	hyperbolic_cache := NewLFU(capacity)
 
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
