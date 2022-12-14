@@ -25,15 +25,15 @@ type Cache interface {
 	// Get returns the value associated with the given key, if it exists.
 	// This operation counts as a "use" for that key-value pair
 	// ok is true if a value was found and false otherwise.
-	Get(key string) (value int, ok bool)
+	Get(key string) (value []byte, ok bool)
 
 	// Remove removes and returns the value associated with the given key, if it exists.
 	// ok is true if a value was found and false otherwise
-	Remove(key string) (value int, ok bool)
+	Remove(key string) (value []byte, ok bool)
 
 	// Set associates the given value with the given key, possibly evicting values
 	// to make room. Returns true if the binding was added successfully, else false.
-	Set(key string, value int) bool
+	Set(key string, value []byte) bool
 
 	// Len returns the number of bindings in the cache.
 	Len() int

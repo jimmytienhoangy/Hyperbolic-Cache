@@ -1,13 +1,11 @@
 package cache
 
 import (
-
-	"math/rand"
-	"time"
+	"math"
 )
 
 // A CacheItem is an item that will go in the cache
-type CacheItem struct {
+type LFUCacheItem struct {
 
 	// size of value (bytes)
 	value_size int
@@ -15,12 +13,10 @@ type CacheItem struct {
 	// how many times the item is accessed
 	access_count int
 
-	// the date and time the item was first inserted
-	insert_time time.Time
 }
 
-// HyperbolicCache is a cache that follows the hyperbolic algorithm
-type HyperbolicCache struct {
+// LFU is a cache that follows the LFU algorithm
+type LFU struct {
 
 	// max number of bytes the cache can hold
 	max_capacity int
@@ -32,7 +28,7 @@ type HyperbolicCache struct {
 	num_bindings int
 
 	// map from keys to items in cache
-	mapping map[string]*CacheItem
+	mapping map[string]*LFUCacheItem
 
 	// number of hits
 	hits int
@@ -42,20 +38,20 @@ type HyperbolicCache struct {
 }
 
 // NewHyperbolicCache creates a new, empty Hyperbolic cache
-func NewHyperbolicCache(max_capacity int) *HyperbolicCache {
+func newLFU(max_capacity int) *LFU {
 
-	return &HyperbolicCache{
+	return &LFU{
 		max_capacity: max_capacity,
 		size:         0,
 		num_bindings: 0,
-		mapping:      make(map[string]*CacheItem, max_capacity),
+		mapping:      make(map[string]*LFUCacheItem, max_capacity),
 		hits:         0,
 		misses:       0,
 	}
 }
 
 // Given a key, Get return the corresponding value's size and a success boolean
-func (cache *HyperbolicCache) Get(key string) (value_size int, ok bool) {
+func (cache *LFU) Get(key string) (value_size int, ok bool) {
 
 	// retrieve item associated with key
 	item, ok := cache.mapping[key]
@@ -81,7 +77,7 @@ func (cache *HyperbolicCache) Get(key string) (value_size int, ok bool) {
 }
 
 // Given a key and value, Set add them to the cache
-func (cache *HyperbolicCache) Set(key string, value_size int) bool {
+func (cache *LFU) Set(key string, value_size int) bool {
 
 	// size of value to be added
 	value_length := value_size
@@ -93,10 +89,9 @@ func (cache *HyperbolicCache) Set(key string, value_size int) bool {
 	if (insert_size) > cache.max_capacity {
 		return false
 	}
-	
+
 	// check if the key already has a value
 	existing_item, ok := cache.mapping[key]
-	
 	if ok {
 		// replace value size, update size of cache, and return
 		cache.size -= existing_item.value_size
@@ -120,22 +115,20 @@ func (cache *HyperbolicCache) Set(key string, value_size int) bool {
 		return true
 	}
 
-
 	// if not enough space, evict until there is enough space
-	for insert_size > cache.RemainingStorage() {
+	for insert_size > (cache.max_capacity - cache.size) {
 
 		// find what key, value pair we should evict
 		key_to_remove := cache.Evict_Which()
 
-		// remove the chosen key (capacity is being updated in Remove())
+		// remove the chosen key
 		_, success := cache.Remove(key_to_remove)
 		if success {
 			cache.num_bindings -= 1
 		}
-
 	}
 
-	cache.mapping[key] = &CacheItem{value_size: value_length, access_count: 1, insert_time: time.Now()}
+	cache.mapping[key] = &LFUCacheItem{value_size: value_length, access_count: 1,}
 
 	cache.size += insert_size
 	cache.num_bindings += 1
@@ -143,47 +136,23 @@ func (cache *HyperbolicCache) Set(key string, value_size int) bool {
 	return true
 }
 
-// Calc_P calculates the priority of an item for the eviction algorithm
-func (item *CacheItem) Calc_P() (index float32) {
 
-	// calculate time since item's initial insertion into the cache
-	time_in_cache := time.Now().Sub(item.insert_time)
+// Evict_Which() is an algorithm to select which item in the cache to evict
+func (cache *LFU) Evict_Which() (key string) {
 
-	// priority = number of accesses / time in cache
-	return float32(item.access_count) / float32(time_in_cache.Milliseconds())
-
-}
-
-// Evict_Which() is an algorithm to select which items in the cache to evict
-func (cache *HyperbolicCache) Evict_Which() (key string) {
-
-	//	https://golangbyexample.com/generate-random-array-slice-golang/
-
-	// sample size S
-	sample_size := len(cache.mapping)
-
-	// create a randomly ordered slice of the cache mapping's keys
-	keys := make([]string, len(cache.mapping))
-	i := 0
-	for j := range cache.mapping {
-		keys[i] = j
-		i++
+	if len(cache.mapping) == 0 {
+		return ""
 	}
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(keys), func(i, j int) {
-		keys[i], keys[j] = keys[j], keys[i]
-	})
 
-	sampled_items := keys[0:sample_size]
+	// iterate through mapping to find the item with 
+	// the least number of accesses
+	minimum := ""
+	minValue := math.MaxInt32
 
-	// get the key of the item with the minimum p value
-	minimum := sampled_items[0]
-	minValue := cache.mapping[sampled_items[0]].Calc_P()
-
-	for _, key := range sampled_items {
-		if cache.mapping[key].Calc_P() < minValue {
-			minValue = cache.mapping[key].Calc_P()
-			minimum = key
+	for j := range cache.mapping {
+		if cache.mapping[j].access_count < minValue {
+			minValue = cache.mapping[j].access_count
+			minimum = j
 		}
 	}
 
@@ -191,28 +160,28 @@ func (cache *HyperbolicCache) Evict_Which() (key string) {
 }
 
 // MaxStorage returns the maximum number of bytes this cache can store
-func (cache *HyperbolicCache) MaxStorage() int {
+func (cache *LFU) MaxStorage() int {
 	return cache.max_capacity
 }
 
 // RemainingStorage returns the number of unused bytes available in this cache
-func (cache *HyperbolicCache) RemainingStorage() int {
+func (cache *LFU) RemainingStorage() int {
 	return cache.max_capacity - cache.size
 }
 
 // Stats returns statistics about how many search hits and misses have occurred.
-func (cache *HyperbolicCache) Stats() *Stats {
+func (cache *LFU) Stats() *Stats {
 	return &Stats{Hits: cache.hits, Misses: cache.misses}
 }
 
 // Len returns the number of bindings in the cache.
-func (cache *HyperbolicCache) Len() int {
+func (cache *LFU) Len() int {
 	return cache.num_bindings
 }
 
 // Remove removes and returns the value associated with the given key, if it exists.
 // ok is true if a value size was found and false otherwise
-func (cache *HyperbolicCache) Remove(key string) (value_size int, ok bool) {
+func (cache *LFU) Remove(key string) (value_size int, ok bool) {
 
 	// check if there is an item associated with key
 	item, ok := cache.mapping[key]
