@@ -2,22 +2,20 @@
  * hyperbolic_test.go
  * Authors: Reuben Agogoe, Stephen Dong, Jimmy Hoang
  * Usage: `go test`  or  `go test -v`
- * Description:
- *    A unit testing suite for hyperbolic.go.
+ * Description: A unit testing suite for hyperbolic.go.
  ******************************************************************************/
 
 package cache
 
 import (
-	"fmt"
-	"testing"
-	"time"
-
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+	"testing"
+	"time"
 )
 
 /******************************************************************************/
@@ -33,7 +31,6 @@ import (
 func TestHyperbolic(t *testing.T) {
 	capacity := 64
 	hyperbolic := NewHyperbolicCache(capacity)
-	checkCapacity(t, hyperbolic, capacity)
 
 	for i := 0; i < 4; i++ {
 		key := fmt.Sprintf("key%d", i)
@@ -208,7 +205,6 @@ func wait() {
 func TestHyperbolicFunction(t *testing.T) {
 	capacity := 10
 	cache := NewHyperbolicCache(capacity)
-	checkCapacity(t, cache, capacity)
 
 	// test states and cities to insert as bindings
 	var values [5]string
@@ -243,7 +239,7 @@ func TestHyperbolicFunction(t *testing.T) {
 	cache.Set("f", len([]byte("f")))
 	fmt.Println("test2")
 
-	for j := range cache.mapping {
+	for j := range cache.keys_to_items {
 		fmt.Println(j)
 	}
 
@@ -262,7 +258,6 @@ func TestHyperbolicFunction(t *testing.T) {
 func TestHyperbolicFunction2(t *testing.T) {
 	capacity := 10
 	cache := NewHyperbolicCache(capacity)
-	checkCapacity(t, cache, capacity)
 
 	// test states and cities to insert as bindings
 	var values [3]string
@@ -316,7 +311,7 @@ func TestHyperbolicFunction2(t *testing.T) {
 
 	_, ok2 := cache.Get("cd")
 
-	for j := range cache.mapping {
+	for j := range cache.keys_to_items {
 		fmt.Println(j)
 	}
 
