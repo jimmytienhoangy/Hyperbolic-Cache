@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Here is a list of questions that we currently have: 
 
 1) Should we be updating the initial insertion time for an item in our cache if we are updating the value of the item to a new value?
@@ -34,3 +35,62 @@ Wed. 10am-11am
 OH 2: Last Second
 Office Hours: Thu. 10am-11am
 Office Hours: Thu. 2:30pm-3:30pm
+=======
+Here is a list of questions that we currently have: 
+
+1) Should we be updating the initial insertion time for an item in our cache if we are updating the value of the item to a new value?
+
+2) What should (S) be for sampling for the Hyperbolic cache?
+
+3) Hyperbolic cache, do we increase the access count when we set something that is already in the cache? (?) 
+
+4) For the set method, how should we go about checking if the value associated with the key is new or not because we are only storing value lengths? This will affect whether we update. 
+
+5) What is the best way to test the accuracy of our hyperbolic cache since we have to deal with random sampling and timing? 
+
+6) Did we go about using trace.tr correctly, or should we be using premade libraries to help us run these traces?
+
+7) The way we are running the traces, we are running gets, and if the get misses, we run set. Is this the right way? This registers the initial gets as misses, should we account for this? 
+
+7) What are the series of gets/sets that we should be doing to test? (?)
+
+8) Should we be evicting based on the number of items or byte size? (paper on hyperbolic does number of items while trace.tr seems to use byte size!)
+
+9) Is the scope of our evaluation sufficient? (Comparing LFU to hyperbolic cache hit/miss ratio)
+
+10) Do we need to meet some kind of performance requirements? (Our LFU loops through all keys of mapping to find item with least amount of accesses. Linear time.)
+
+
+do a diff trace, use paper's parameters, use timestamps from trace for time in cache (hyperbolic) 
+
+OH 1: 
+Wed. 10am-11am
+
+OH 2: Last Second
+Office Hours: Thu. 10am-11am
+Office Hours: Thu. 2:30pm-3:30pm
+
+1) We should probably run a trace on a different dataset 
+because apparently that one is not good (idk if that accounts 
+for the disparity between that and the lfu) 
+
+2) they weren’t able to answer any of the implementation questions 
+but he suggested we try what was mentioned in the paper (64). But 
+I wasn’t able ti ge to formation on updating initial insertion 
+time of increasing access cache when we are updating. 
+
+3) he said we shouldn’t worry abt the issue w/ storing the integers 
+for the set method where we check if the value associated w/ the key
+ is new or not. I’m not sure if he understood this question bcs it 
+ seemed like he was talking abt de duplication 
+
+4) for scanning hyperbolic cache he suggested using the time stamps
+ they give to speed up time but he said it doesn’t hurt if you add
+  a wait or might just make things slower.
+
+* It seems like we were doing traces correctly
+* he said normally in a get if it’s not there you add a set() within the get but I clarified that our method of having them separate should be sufficient (seems like that implies that register initial ones as misses is right we can clarify in Ed for this one) 
+* my impression is evicting based on either items of byte size doesn’t matter so long as we explain it in the report (we get to design our own cache) 
+* seems like the scope of our evaluation is what everyone else is doing 
+* didn’t get a chance to ask about meeting specific performance requirements.
+>>>>>>> ab80359379ba80be7ba03f487c0b2ac1957eb947

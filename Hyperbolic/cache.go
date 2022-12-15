@@ -5,37 +5,28 @@ type Stats struct {
 	Misses int
 }
 
-func (stats *Stats) Equals(other *Stats) bool {
-	if stats == nil && other == nil {
-		return true
-	}
-	if stats == nil || other == nil {
-		return false
-	}
-	return stats.Hits == other.Hits && stats.Misses == other.Misses
-}
-
 type Cache interface {
-	// MaxStorage returns the maximum number of bytes this cache can store
+	// MaxStorage returns the maximum number of items this cache can store.
 	MaxStorage() int
 
-	// RemainingStorage returns the number of unused bytes available in this cache
+	// RemainingStorage returns the number of items that can still be stored
+	// in this cache.
 	RemainingStorage() int
 
-	// Get returns the value associated with the given key, if it exists.
-	// This operation counts as a "use" for that key-value pair
-	// ok is true if a value was found and false otherwise.
-	Get(key string) (value int, ok bool)
+	// Get returns how many times the item associated with the given key
+	// has been accessed (not including this access) and a success boolean.
+	Get(key string) (access_count int, ok bool)
 
-	// Remove removes and returns the value associated with the given key, if it exists.
-	// ok is true if a value was found and false otherwise
-	Remove(key string) (value int, ok bool)
+	// Remove removes the item associated with the given key from the cache, if it exists.
+	// ok is true if an item was found and false otherwise.
+	Remove(key string) (ok bool)
 
-	// Set associates the given value with the given key, possibly evicting values
-	// to make room. Returns true if the binding was added successfully, else false.
-	Set(key string, value int) bool
+	// Set adds/updates an item with the given key in the cache
+	// and returns a success boolean. This operation counts as a
+	// access for the item with the given key.
+	Set(key string) (ok bool)
 
-	// Len returns the number of bindings in the cache.
+	// Len returns the number of items in the cache.
 	Len() int
 
 	// Stats returns a pointer to a Stats object that indicates how many hits

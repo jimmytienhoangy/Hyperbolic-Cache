@@ -2,22 +2,19 @@
  * hyperbolic_test.go
  * Authors: Reuben Agogoe, Stephen Dong, Jimmy Hoang
  * Usage: `go test`  or  `go test -v`
- * Description:
- *    A unit testing suite for hyperbolic.go.
+ * Description: A unit testing suite for hyperbolic.go.
  ******************************************************************************/
 
 package cache
 
 import (
-	"fmt"
-	"testing"
-	"time"
-
 	"bufio"
+	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
+	"testing"
+	//"time"
 )
 
 /******************************************************************************/
@@ -30,10 +27,159 @@ import (
 
 // Test to see if a normal LRU cache that doesn't reach capacity is working
 // (get and set methods)
-func TestHyperbolic(t *testing.T) {
+
+func TestHitRate(t *testing.T) {
+	lfu()
+	hyperbolic()
+	fifo()
+}
+func hyperbolic() {
+	file, err := os.Open("10k.tr")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// set the capacity
+	capacity := 1000 //(?)
+	hyperbolic_cache := NewHyperbolicCache(capacity, 100)
+
+	count := 0
+
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	// optionally, resize scanner's capacity for lines over 64K, see next example
+	for scanner.Scan() {
+
+		// if count%1000 == 0 {
+		// 	fmt.Println(count)
+		// }
+
+		text := scanner.Text()
+
+		parsed_text := strings.Split(text, " ")
+
+		_, key, _ := parsed_text[0], parsed_text[1], parsed_text[2]
+
+		_, ok := hyperbolic_cache.Get(key)
+
+		if !ok {
+			//value, _ := strconv.Atoi(size)
+			hyperbolic_cache.Set(key)
+			// time.Sleep(1 * time.Millisecond)
+		}
+
+		//fmt.Println(_ + "|" + key + "|" + size)
+
+		//fmt.Println("test")
+		count += 1
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(hyperbolic_cache.Stats())
+}
+
+func lfu() {
+	file, err := os.Open("10k.tr")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// set the capacity
+	capacity := 1000 //(?)
+	cache := NewLFUCache(capacity)
+
+	count := 0
+
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	// optionally, resize scanner's capacity for lines over 64K, see next example
+	for scanner.Scan() {
+
+		// if count%1000 == 0 {
+		// 	fmt.Println(count)
+		// }
+
+		text := scanner.Text()
+
+		parsed_text := strings.Split(text, " ")
+
+		_, key, _ := parsed_text[0], parsed_text[1], parsed_text[2]
+
+		_, ok := cache.Get(key)
+
+		if !ok {
+			//value, _ := strconv.Atoi(size)
+			cache.Set(key)
+			// time.Sleep(1 * time.Millisecond)
+		}
+
+		//fmt.Println(_ + "|" + key + "|" + size)
+
+		//fmt.Println("test")
+		count += 1
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(cache.Stats())
+}
+
+func fifo() {
+	file, err := os.Open("10k.tr")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// set the capacity
+	capacity := 1000 //(?)
+	cache := NewFifo(capacity)
+
+	count := 0
+
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	// optionally, resize scanner's capacity for lines over 64K, see next example
+	for scanner.Scan() {
+
+		// if count%1000 == 0 {
+		// 	fmt.Println(count)
+		// }
+
+		text := scanner.Text()
+
+		parsed_text := strings.Split(text, " ")
+
+		_, key, _ := parsed_text[0], parsed_text[1], parsed_text[2]
+
+		_, ok := cache.Get(key)
+
+		if !ok {
+			//value, _ := strconv.Atoi(size)
+			cache.Set(key)
+			// time.Sleep(1 * time.Millisecond)
+		}
+
+		//fmt.Println(_ + "|" + key + "|" + size)
+
+		//fmt.Println("test")
+		count += 1
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(cache.Stats())
+}
+
+/*func TestHyperbolic(t *testing.T) {
 	capacity := 64
 	hyperbolic := NewHyperbolicCache(capacity)
-	checkCapacity(t, hyperbolic, capacity)
 
 	for i := 0; i < 4; i++ {
 		key := fmt.Sprintf("key%d", i)
@@ -57,7 +203,7 @@ func TestHyperbolic(t *testing.T) {
 
 		}
 	}
-}
+}*/
 
 // // Check to see that eviction is occuring at all
 // func TestHyperbolic2(t *testing.T) {
@@ -200,15 +346,14 @@ func TestHyperbolic(t *testing.T) {
 // }
 
 // sleep for just 1 ms lol
-func wait() {
+/*func wait() {
 	time.Sleep(100 * time.Millisecond)
-}
+}*/
 
 // Test whether the hyperbolic function is working
-func TestHyperbolicFunction(t *testing.T) {
+/*func TestHyperbolicFunction(t *testing.T) {
 	capacity := 10
 	cache := NewHyperbolicCache(capacity)
-	checkCapacity(t, cache, capacity)
 
 	// test states and cities to insert as bindings
 	var values [5]string
@@ -243,7 +388,7 @@ func TestHyperbolicFunction(t *testing.T) {
 	cache.Set("f", len([]byte("f")))
 	fmt.Println("test2")
 
-	for j := range cache.mapping {
+	for j := range cache.keys_to_items {
 		fmt.Println(j)
 	}
 
@@ -262,7 +407,6 @@ func TestHyperbolicFunction(t *testing.T) {
 func TestHyperbolicFunction2(t *testing.T) {
 	capacity := 10
 	cache := NewHyperbolicCache(capacity)
-	checkCapacity(t, cache, capacity)
 
 	// test states and cities to insert as bindings
 	var values [3]string
@@ -316,7 +460,7 @@ func TestHyperbolicFunction2(t *testing.T) {
 
 	_, ok2 := cache.Get("cd")
 
-	for j := range cache.mapping {
+	for j := range cache.keys_to_items {
 		fmt.Println(j)
 	}
 
@@ -327,49 +471,64 @@ func TestHyperbolicFunction2(t *testing.T) {
 
 	fmt.Println(cache.Stats())
 
-}
+}*/
 
 // func TestHyperbolicFunction3(t *testing.T) {
 
 // }
 
-func TestHyperbolicFunction3(t *testing.T) {
-	file, err := os.Open("test.tr")
-	if err != nil {
-		log.Fatal(err)
-	}
+// func simulateHyperbolicCache(t *testing.T) {
 
-	// set the capacity
-	capacity := 1000 //(?)
-	hyperbolic_cache := NewHyperbolicCache(capacity)
+// 	// read in trace file
+// 	path := filepath.Join("cache-trace", "samples", "2020Mar", "cluster002")
+// 	file, err := os.Open(path)
 
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	// optionally, resize scanner's capacity for lines over 64K, see next example
-	for scanner.Scan() {
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-		text := scanner.Text()
+// 	// create a hyperbolic cache with max_capacity, sample size
+// 	max_capacity := 10000
+// 	sample_size := 64
+// 	hyperbolic_cache := NewHyperbolicCache(max_capacity, sample_size)
 
-		parsed_text := strings.Split(text, " ")
+// 	defer file.Close()
+// 	scanner := bufio.NewScanner(file)
 
-		_, key, size := parsed_text[0], parsed_text[1], parsed_text[2]
+// 	// read each line of the trace file, parse relevant fields, and fulfill request
+// 	for scanner.Scan() {
 
-		_, ok := hyperbolic_cache.Get(key)
+// 		text := scanner.Text()
 
-		if !ok {
-			value, _ := strconv.Atoi(size)
-			hyperbolic_cache.Set(key, value)
-			time.Sleep(1 * time.Millisecond)
-		}
+// 		line := strings.Split(text, ",")
 
-		//fmt.Println(_ + "|" + key + "|" + size)
+// 		_, key, _, _, _, operation, _ :=
+// 			line[0], line[1], line[2], line[3], line[4], line[5], line[6]
 
-		//fmt.Println("test")
-	}
+// 		// only handle get and set operations
+// 		if operation == "set" {
+// 			set_success := hyperbolic_cache.Set(key)
+// 			if !set_success {
+// 				log.Fatal("Failed to complete the set request.")
+// 			}
+// 		} else if operation == "get" {
+// 			// we can return access count if we want to check accuracy
+// 			_, get_success := hyperbolic_cache.Get(key)
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
+// 			if !get_success {
+// 				set_success := hyperbolic_cache.Set(key)
 
-	fmt.Println(hyperbolic_cache.Stats())
-}
+// 				if !set_success {
+// 					log.Fatal("Failed to complete the set request.")
+// 				}
+// 			}
+// 		}
+// 	}
+
+// 	if err := scanner.Err(); err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	// print hit, miss ratio
+// 	fmt.Println(hyperbolic_cache.Stats())
+// }
