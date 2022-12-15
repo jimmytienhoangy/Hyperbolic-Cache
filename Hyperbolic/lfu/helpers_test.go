@@ -8,10 +8,37 @@ import (
 /*                                 Helpers                                    */
 /******************************************************************************/
 
-// Fails test t with an error message if hyperbolic.MaxStorage() is not equal to capacity
+// CacheType returns a string representing the type (i.e. eviction scheme) of
+// this cache.
+func cacheType(cache Cache) string {
+
+	return "cache"
+
+}
+
+// Returns true iff a and b represent equal slices of bytes.
+func bytesEqual(a []byte, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	if (a == nil && b != nil) || (a != nil && b == nil) {
+		return false
+	}
+
+	for i, v := range a {
+		if b[i] != v {
+			return false
+		}
+	}
+
+	return true
+}
+
+// Fails test t with an error message if fifo.MaxStorage() is not equal to capacity
 func checkCapacity(t *testing.T, cache Cache, capacity int) {
-	max_storage := cache.MaxStorage()
-	if max_storage != capacity {
-		t.Errorf("Expected the cache to have %d max capacity, but it had %d!", capacity, max_storage)
+	max := cache.MaxStorage()
+	if max != capacity {
+		t.Errorf("Expected %s to have %d MaxStorage, but it had %d", cacheType(cache), capacity, max)
 	}
 }

@@ -5,35 +5,26 @@ type Stats struct {
 	Misses int
 }
 
-func (stats *Stats) Equals(other *Stats) bool {
-	if stats == nil && other == nil {
-		return true
-	}
-	if stats == nil || other == nil {
-		return false
-	}
-	return stats.Hits == other.Hits && stats.Misses == other.Misses
-}
-
 type Cache interface {
-	// MaxStorage returns the maximum number of bytes this cache can store
+	// MaxStorage returns the maximum number of bytes this cache can store.
 	MaxStorage() int
 
-	// RemainingStorage returns the number of unused bytes available in this cache
+	// RemainingStorage returns the number of unused bytes available in this cache.
 	RemainingStorage() int
 
-	// Get returns the value associated with the given key, if it exists.
-	// This operation counts as a "use" for that key-value pair
-	// ok is true if a value was found and false otherwise.
-	Get(key string) (value int, ok bool)
+	// Get returns the value_size associated with the given key, if it exists.
+	// This operation counts as a "use" for the item with the given key.
+	// ok is true if a value_size was found and false otherwise.
+	Get(key string) (value_size int, ok bool)
 
-	// Remove removes and returns the value associated with the given key, if it exists.
-	// ok is true if a value was found and false otherwise
-	Remove(key string) (value int, ok bool)
+	// Remove removes the key-value_size pair associated with the given key, if it exists.
+	// ok is true if a value_size was found and false otherwise.
+	Remove(key string) (ok bool)
 
-	// Set associates the given value with the given key, possibly evicting values
-	// to make room. Returns true if the binding was added successfully, else false.
-	Set(key string, value int) bool
+	// Set associates the given value_size with the given key, possibly evicting key-value_size pairs
+	// to make room. This operation counts as a "use" for the item with the given key.
+	// Returns true if the binding was added successfully, else false.
+	Set(key string, value_size int) bool
 
 	// Len returns the number of bindings in the cache.
 	Len() int
