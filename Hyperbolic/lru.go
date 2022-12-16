@@ -33,7 +33,7 @@ type LRUCacheItem struct {
 }
 
 // NewLRU returns a pointer to a new, empty LRUCache.
-func NewLRU(max_capacity int) *LRUCache {
+func NewLRUCache(max_capacity int) *LRUCache {
 
 	// create and initialize a new LRUCache
 	return &LRUCache{

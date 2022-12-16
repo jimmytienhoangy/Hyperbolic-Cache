@@ -12,11 +12,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
-	"path/filepath"
-	//"time"
 )
 
 /******************************************************************************/
@@ -93,60 +92,89 @@ func RunCacheExperiment(input_file string, cache_type string, capacity int, samp
 
 }
 */
-func TestHitRate2(t *testing.T) {
-	file := filepath.Join("2020Mar", "cluster003")
-	capacity := 10000
+
+// TestHitRate computes the hit miss ratio of the FIFO, LFU, LRU, and Hyperbolic
+// caching algorithms on traces from https://github.[com/twitter/cache-trace.
+func TestHitRate(t *testing.T) {
+
+	// traces we will use for testing and evaluation
+	traces_to_process := []string{"cluster002", "cluster003", "cluster004"}
+
+	// from the academic paper on Hypbolic caching
+	max_capacity := 10000
 	sample_size := 64
 
-	RunCacheExperiment2(file, "lru", capacity, sample_size)
-	RunCacheExperiment2(file, "fifo", capacity, sample_size)
-	RunCacheExperiment2(file, "lfu", capacity, sample_size)
-	RunCacheExperiment2(file, "hyperbolic", capacity, sample_size)
+	for i, trace := range traces_to_process {
+
+		trace_file := filepath.Join("2020Mar", trace)
+
+		fmt.Println("Test ", i, ": ")
+
+		RunCacheExperiment(trace_file, "FIFO", max_capacity, sample_size)
+		RunCacheExperiment(trace_file, "LRU", max_capacity, sample_size)
+		RunCacheExperiment(trace_file, "LFU", max_capacity, sample_size)
+		RunCacheExperiment(trace_file, "HYPERBOLIC", max_capacity, sample_size)
+
+	}
 
 }
 
-func RunCacheExperiment2(input_file string, cache_type string, capacity int, sample_size int) {
-	file, err := os.Open(input_file)
+// RunCacheExperiment runs an experiment on an input trace file using
+// the given cache type, max cache capacity, and (if applicable) sample size.
+func RunCacheExperiment(trace_file string, cache_type string, capacity int, sample_size int) {
+
+	// open the trace file
+	file, err := os.Open(trace_file)
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	// create a new cache_type cache
 	var cache Cache
 
-	if cache_type == "lfu" {
+	if cache_type == "FIFO" {
+		cache = NewFIFOCache(capacity)
+	} else if cache_type == "LRU" {
+		cache = NewLRUCache(capacity)
+	} else if cache_type == "LFU" {
 		cache = NewLFUCache(capacity)
-	} else if cache_type == "hyperbolic" {
+	} else if cache_type == "HYPERBOLIC" {
 		cache = NewHyperbolicCache(capacity, sample_size)
-	} else if cache_type == "lru" {
-		cache = NewLru(capacity)
-	} else if cache_type == "fifo" {
-		cache = NewFifo(capacity)
 	}
 
-
+	// read each line of the trace file, parsing the relevant fields
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
+
 	for scanner.Scan() {
 
 		text := scanner.Text()
 
-		line := strings.Split(text, ",")
-		 		timestamp, key, _, _, _, operation, _ :=
- 			line[0], line[1], line[2], line[3], line[4], line[5], line[6]
+		// format: timestamp, anonymized key, key size,
+		// value size, client id, operation, TTL
 
-		timestampint, _ := strconv.Atoi(timestamp)
- 		// only handle get and set operations
- 		if operation == "set" {
-			set_success := cache.Set(timestampint, key)
- 			if !set_success {
+		line := strings.Split(text, ",")
+
+		timestamp, key, _, _, _, operation, _ :=
+			line[0], line[1], line[2], line[3], line[4], line[5], line[6]
+
+		// convert string timestamp to int
+		operation_timestamp, _ := strconv.Atoi(timestamp)
+
+		// only handle get and set operations
+		if operation == "set" {
+			set_success := cache.Set(operation_timestamp, key)
+
+			if !set_success {
 				log.Fatal("Failed to complete the set request.")
 			}
- 		} else if operation == "get" {
- 			// we can return access count if we want to check accuracy
-			_, get_success := cache.Get(key)
+		} else if operation == "get" {
+			get_success := cache.Get(key)
 
+			// set if get failed
 			if !get_success {
-				set_success := cache.Set(timestampint, key)
+				set_success := cache.Set(operation_timestamp, key)
 
 				if !set_success {
 					log.Fatal("Failed to complete the set request.")
@@ -159,11 +187,13 @@ func RunCacheExperiment2(input_file string, cache_type string, capacity int, sam
 		log.Fatal(err)
 	}
 
+	// get stats and print them out
 	stats := cache.Stats()
 	fmt.Println(stats)
-	fmt.Println(cache_type, "hit ratio: ", float32(stats.Hits)/(float32(stats.Hits+stats.Misses)))
-
+	fmt.Println(cache_type, " Hit Ratio: ",
+		float32(stats.Hits)/(float32(stats.Hits+stats.Misses)))
 }
+
 /*func TestHyperbolic(t *testing.T) {
 	capacity := 64
 	hyperbolic := NewHyperbolicCache(capacity)

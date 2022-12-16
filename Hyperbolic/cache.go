@@ -13,9 +13,9 @@ type Cache interface {
 	// in this cache.
 	RemainingStorage() int
 
-	// Get returns how many times the item associated with the given key
-	// has been accessed (not including this access) and a success boolean.
-	Get(key string) (access_count int, ok bool)
+	// Get returns a success boolean indicating if an item with the given key was found.
+	// This operation counts as an access for the item with the given key.
+	Get(key string) (ok bool)
 
 	// Remove removes the item associated with the given key from the cache, if it exists.
 	// ok is true if an item was found and false otherwise.
@@ -24,7 +24,7 @@ type Cache interface {
 	// Set adds/updates an item with the given key in the cache
 	// and returns a success boolean. This operation counts as a
 	// access for the item with the given key.
-	Set(timestamp int, key string) (ok bool)
+	Set(operation_timestamp int, key string) (ok bool)
 
 	// Len returns the number of items in the cache.
 	Len() int
