@@ -58,16 +58,14 @@ func NewHyperbolicCache(max_capacity int, sample_size int) *HyperbolicCache {
 	}
 }
 
-// Get returns how many times the item associated with the given key
-// has been accessed (not including this access) and a success boolean.
-func (cache *HyperbolicCache) Get(key string) (access_count int, ok bool) {
+// Get returns a success boolean indicating if an item with the key was found.
+func (cache *HyperbolicCache) Get(key string) (ok bool) {
 
 	// retrieve item associated with key
 	item, ok := cache.keys_to_items[key]
 
 	if ok {
 		cache.hits += 1
-		access_count = item.access_count
 
 		// update access count of item
 		item.access_count += 1
@@ -75,10 +73,10 @@ func (cache *HyperbolicCache) Get(key string) (access_count int, ok bool) {
 	} else {
 		cache.misses += 1
 
-		return 0, false
+		return false
 	}
 
-	return access_count, ok
+	return true
 }
 
 // Set adds/updates an item with the given key in the cache
@@ -110,8 +108,8 @@ func (cache *HyperbolicCache) Set(operation_timestamp int, key string) (ok bool)
 
 	// add new item with key
 	cache.keys_to_items[key] = &HyperbolicCacheItem{
-		access_count: 1,
-		initial_timestamp:    operation_timestamp}
+		access_count:      1,
+		initial_timestamp: operation_timestamp}
 
 	// update size of cache
 	cache.size += 1
