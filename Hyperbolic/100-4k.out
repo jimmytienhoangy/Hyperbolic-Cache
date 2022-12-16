@@ -1,0 +1,58 @@
+=== RUN   TestHitRate
+Testing max capacity:  100  ---
+FIFO  Hit Ratio:  0.14304355
+LRU  Hit Ratio:  0.15314718
+HYPERBOLIC  Hit Ratio:  0.11651156
+LFU  Hit Ratio:  0.11497491
+
+Testing max capacity:  200  ---
+FIFO  Hit Ratio:  0.1829608
+LRU  Hit Ratio:  0.19782785
+HYPERBOLIC  Hit Ratio:  0.15478128
+LFU  Hit Ratio:  0.15658562
+
+Testing max capacity:  300  ---
+FIFO  Hit Ratio:  0.21227601
+LRU  Hit Ratio:  0.228785
+HYPERBOLIC  Hit Ratio:  0.18553011
+LFU  Hit Ratio:  0.18299551
+
+Testing max capacity:  400  ---
+FIFO  Hit Ratio:  0.23601916
+LRU  Hit Ratio:  0.25411746
+HYPERBOLIC  Hit Ratio:  0.20550442
+LFU  Hit Ratio:  0.20281415
+
+Testing max capacity:  500  ---
+FIFO  Hit Ratio:  0.254608
+LRU  Hit Ratio:  0.2742575
+HYPERBOLIC  Hit Ratio:  0.22526704
+LFU  Hit Ratio:  0.21841368
+
+Testing max capacity:  1000  ---
+FIFO  Hit Ratio:  0.32231167
+LRU  Hit Ratio:  0.3462889
+HYPERBOLIC  Hit Ratio:  0.28822184
+LFU  Hit Ratio:  0.27471
+
+Testing max capacity:  2000  ---
+FIFO  Hit Ratio:  0.3844399
+LRU  Hit Ratio:  0.41085762
+HYPERBOLIC  Hit Ratio:  0.36116266
+LFU  Hit Ratio:  0.34277764
+
+Testing max capacity:  3000  ---
+FIFO  Hit Ratio:  0.41938764
+LRU  Hit Ratio:  0.44762877
+HYPERBOLIC  Hit Ratio:  0.4046707
+LFU  Hit Ratio:  0.38907003
+
+Testing max capacity:  4000  ---
+FIFO  Hit Ratio:  0.44397527
+LRU  Hit Ratio:  0.47303626
+HYPERBOLIC  Hit Ratio:  0.43469262
+LFU  Hit Ratio:  0.41933948
+
+--- PASS: TestHitRate (61.11s)
+PASS
+ok  	github.com/jimmytienhoangy/COS316_Project	61.259s
