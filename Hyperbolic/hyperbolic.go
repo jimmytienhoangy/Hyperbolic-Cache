@@ -15,10 +15,10 @@ type HyperbolicCacheItem struct {
 	access_count int
 
 	// when the item was first inserted
-	initial_insert_time time.Time
+	initial_timestamp int
 }
 
-// A HyperbolicCache is a cache that uses hyperbolic caching.
+// A HyperbolicCache is a cache that uses the hyperbolic caching algorithm.
 type HyperbolicCache struct {
 
 	// maximum number of items the cache can hold
@@ -67,7 +67,6 @@ func (cache *HyperbolicCache) Get(key string) (access_count int, ok bool) {
 
 	if ok {
 		cache.hits += 1
-
 		access_count = item.access_count
 
 		// update access count of item
@@ -84,7 +83,7 @@ func (cache *HyperbolicCache) Get(key string) (access_count int, ok bool) {
 
 // Set adds/updates an item with the given key in the cache
 // and returns a success boolean.
-func (cache *HyperbolicCache) Set(key string) (ok bool) {
+func (cache *HyperbolicCache) Set(operation_timestamp int, key string) (ok bool) {
 
 	// check if an item with that key already exists
 	existing_item, ok := cache.keys_to_items[key]
@@ -100,7 +99,7 @@ func (cache *HyperbolicCache) Set(key string) (ok bool) {
 	// evict an item
 	if cache.size == cache.max_capacity {
 
-		key_to_remove := cache.Evict_Which()
+		key_to_remove := cache.Evict_Which(operation_timestamp)
 
 		success := cache.Remove(key_to_remove)
 		if !success {
@@ -111,8 +110,8 @@ func (cache *HyperbolicCache) Set(key string) (ok bool) {
 
 	// add new item with key
 	cache.keys_to_items[key] = &HyperbolicCacheItem{
-		access_count:        1,
-		initial_insert_time: time.Now()}
+		access_count: 1,
+		initial_timestamp:    operation_timestamp}
 
 	// update size of cache
 	cache.size += 1
@@ -121,19 +120,19 @@ func (cache *HyperbolicCache) Set(key string) (ok bool) {
 }
 
 // Calc_P calculates the priority of an item for the eviction algorithm.
-func (item *HyperbolicCacheItem) Calc_P() (index float32) {
+func (item *HyperbolicCacheItem) Calc_P(eviction_timestamp int) (index float32) {
 
 	// calculate the time since item's
 	// initial insertion into the cache
-	time_in_cache := time.Since(item.initial_insert_time)
+	time_in_cache := eviction_timestamp - item.initial_timestamp
 
 	// priority = number of accesses / time in cache
-	return float32(item.access_count) / float32(time_in_cache.Milliseconds())
+	return float32(item.access_count) / float32(time_in_cache)
 
 }
 
 // Evict_Which() is an algorithm to select which item in the cache to evict.
-func (cache *HyperbolicCache) Evict_Which() (key string) {
+func (cache *HyperbolicCache) Evict_Which(eviction_timestamp int) (key string) {
 
 	// make sure cache is actually full before evicting
 	if cache.size != cache.max_capacity {
@@ -163,11 +162,11 @@ func (cache *HyperbolicCache) Evict_Which() (key string) {
 
 	// find the key of the sample item with the minimum p value
 	minimum := sampled_items[0]
-	minValue := cache.keys_to_items[sampled_items[0]].Calc_P()
+	minValue := cache.keys_to_items[sampled_items[0]].Calc_P(eviction_timestamp)
 
 	for _, key := range sampled_items {
-		if cache.keys_to_items[key].Calc_P() < minValue {
-			minValue = cache.keys_to_items[key].Calc_P()
+		if cache.keys_to_items[key].Calc_P(eviction_timestamp) < minValue {
+			minValue = cache.keys_to_items[key].Calc_P(eviction_timestamp)
 			minimum = key
 		}
 	}

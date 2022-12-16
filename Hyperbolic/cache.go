@@ -24,7 +24,7 @@ type Cache interface {
 	// Set adds/updates an item with the given key in the cache
 	// and returns a success boolean. This operation counts as a
 	// access for the item with the given key.
-	Set(key string) (ok bool)
+	Set(timestamp int, key string) (ok bool)
 
 	// Len returns the number of items in the cache.
 	Len() int

@@ -12,8 +12,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
+	"path/filepath"
 	//"time"
 )
 
@@ -24,101 +26,60 @@ import (
 /******************************************************************************/
 /*                                  Tests                                     */
 /******************************************************************************/
-
-// Test to see if a normal LRU cache that doesn't reach capacity is working
-// (get and set methods)
-
+/*
 func TestHitRate(t *testing.T) {
-	lfu()
-	hyperbolic()
-	fifo()
+	file := "100k.tr"
+	capacity := 3000
+	sample_size := 64
+
+	RunCacheExperiment(file, "lru", capacity, sample_size)
+	RunCacheExperiment(file, "fifo", capacity, sample_size)
+	RunCacheExperiment(file, "lfu", capacity, sample_size)
+	RunCacheExperiment(file, "hyperbolic", capacity, sample_size)
+
 }
-func hyperbolic() {
-	file, err := os.Open("10k.tr")
+
+func RunCacheExperiment(input_file string, cache_type string, capacity int, sample_size int) {
+	file, err := os.Open(input_file)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// set the capacity
-	capacity := 1000 //(?)
-	hyperbolic_cache := NewHyperbolicCache(capacity, 100)
+	var cache Cache
+
+	if cache_type == "lfu" {
+		cache = NewLFUCache(capacity)
+	} else if cache_type == "hyperbolic" {
+		cache = NewHyperbolicCache(capacity, sample_size)
+	} else if cache_type == "lru" {
+		cache = NewLru(capacity)
+	} else if cache_type == "fifo" {
+		cache = NewFifo(capacity)
+	}
 
 	count := 0
 
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	// optionally, resize scanner's capacity for lines over 64K, see next example
 	for scanner.Scan() {
 
-		// if count%1000 == 0 {
-		// 	fmt.Println(count)
-		// }
+		if count%1000 == 0 && (cache_type == "lfu" || cache_type == "hyperbolic") {
+			fmt.Println("iteration:", count)
 
-		text := scanner.Text()
-
-		parsed_text := strings.Split(text, " ")
-
-		_, key, _ := parsed_text[0], parsed_text[1], parsed_text[2]
-
-		_, ok := hyperbolic_cache.Get(key)
-
-		if !ok {
-			//value, _ := strconv.Atoi(size)
-			hyperbolic_cache.Set(key)
-			// time.Sleep(1 * time.Millisecond)
 		}
 
-		//fmt.Println(_ + "|" + key + "|" + size)
-
-		//fmt.Println("test")
-		count += 1
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println(hyperbolic_cache.Stats())
-}
-
-func lfu() {
-	file, err := os.Open("10k.tr")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// set the capacity
-	capacity := 1000 //(?)
-	cache := NewLFUCache(capacity)
-
-	count := 0
-
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	// optionally, resize scanner's capacity for lines over 64K, see next example
-	for scanner.Scan() {
-
-		// if count%1000 == 0 {
-		// 	fmt.Println(count)
-		// }
-
 		text := scanner.Text()
 
 		parsed_text := strings.Split(text, " ")
 
-		_, key, _ := parsed_text[0], parsed_text[1], parsed_text[2]
+		timestamp, key, _ := parsed_text[0], parsed_text[1], parsed_text[2]
+		timestampint, _ := strconv.Atoi(timestamp)
 
 		_, ok := cache.Get(key)
 
 		if !ok {
-			//value, _ := strconv.Atoi(size)
-			cache.Set(key)
-			// time.Sleep(1 * time.Millisecond)
+			cache.Set(timestampint, key)
 		}
-
-		//fmt.Println(_ + "|" + key + "|" + size)
-
-		//fmt.Println("test")
 		count += 1
 	}
 
@@ -126,57 +87,83 @@ func lfu() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(cache.Stats())
+	stats := cache.Stats()
+	fmt.Println(stats)
+	fmt.Println(cache_type, "hit ratio: ", float32(stats.Hits)/(float32(stats.Hits+stats.Misses)))
+
+}
+*/
+func TestHitRate2(t *testing.T) {
+	file := filepath.Join("2020Mar", "cluster003")
+	capacity := 10000
+	sample_size := 64
+
+	RunCacheExperiment2(file, "lru", capacity, sample_size)
+	RunCacheExperiment2(file, "fifo", capacity, sample_size)
+	RunCacheExperiment2(file, "lfu", capacity, sample_size)
+	RunCacheExperiment2(file, "hyperbolic", capacity, sample_size)
+
 }
 
-func fifo() {
-	file, err := os.Open("10k.tr")
+func RunCacheExperiment2(input_file string, cache_type string, capacity int, sample_size int) {
+	file, err := os.Open(input_file)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// set the capacity
-	capacity := 1000 //(?)
-	cache := NewFifo(capacity)
+	var cache Cache
 
-	count := 0
+	if cache_type == "lfu" {
+		cache = NewLFUCache(capacity)
+	} else if cache_type == "hyperbolic" {
+		cache = NewHyperbolicCache(capacity, sample_size)
+	} else if cache_type == "lru" {
+		cache = NewLru(capacity)
+	} else if cache_type == "fifo" {
+		cache = NewFifo(capacity)
+	}
+
 
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	// optionally, resize scanner's capacity for lines over 64K, see next example
 	for scanner.Scan() {
-
-		// if count%1000 == 0 {
-		// 	fmt.Println(count)
-		// }
 
 		text := scanner.Text()
 
-		parsed_text := strings.Split(text, " ")
+		line := strings.Split(text, ",")
+		 		timestamp, key, _, _, _, operation, _ :=
+ 			line[0], line[1], line[2], line[3], line[4], line[5], line[6]
 
-		_, key, _ := parsed_text[0], parsed_text[1], parsed_text[2]
+		timestampint, _ := strconv.Atoi(timestamp)
+ 		// only handle get and set operations
+ 		if operation == "set" {
+			set_success := cache.Set(timestampint, key)
+ 			if !set_success {
+				log.Fatal("Failed to complete the set request.")
+			}
+ 		} else if operation == "get" {
+ 			// we can return access count if we want to check accuracy
+			_, get_success := cache.Get(key)
 
-		_, ok := cache.Get(key)
+			if !get_success {
+				set_success := cache.Set(timestampint, key)
 
-		if !ok {
-			//value, _ := strconv.Atoi(size)
-			cache.Set(key)
-			// time.Sleep(1 * time.Millisecond)
+				if !set_success {
+					log.Fatal("Failed to complete the set request.")
+				}
+			}
 		}
-
-		//fmt.Println(_ + "|" + key + "|" + size)
-
-		//fmt.Println("test")
-		count += 1
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(cache.Stats())
-}
+	stats := cache.Stats()
+	fmt.Println(stats)
+	fmt.Println(cache_type, "hit ratio: ", float32(stats.Hits)/(float32(stats.Hits+stats.Misses)))
 
+}
 /*func TestHyperbolic(t *testing.T) {
 	capacity := 64
 	hyperbolic := NewHyperbolicCache(capacity)

@@ -53,7 +53,6 @@ func (cache *LFUCache) Get(key string) (access_count int, ok bool) {
 
 	if ok {
 		cache.hits += 1
-
 		access_count = item.access_count
 
 		// update access count of item
@@ -70,7 +69,9 @@ func (cache *LFUCache) Get(key string) (access_count int, ok bool) {
 
 // Set adds/updates an item with the given key in the cache
 // and returns a success boolean.
-func (cache *LFUCache) Set(key string) (ok bool) {
+func (cache *LFUCache) Set(operation_timestamp int, key string) (ok bool) {
+
+	// operation_timestamp is ignored
 
 	// check if an item with that key already exists
 	existing_item, ok := cache.keys_to_items[key]
