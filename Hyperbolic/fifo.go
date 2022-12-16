@@ -4,7 +4,8 @@ import (
 	"container/list"
 )
 
-// A FIFOCache is a fixed-size, in-memory cache with first-in, first-out eviction.
+// A FIFOCache is a fixed-size, in-memory cache with 
+// first-in, first-out eviction.
 type FIFOCache struct {
 
 	// total number of items the FIFOCache can store
@@ -13,7 +14,8 @@ type FIFOCache struct {
 	// total number of items currently in the FIFOCache
 	size int
 
-	// mapping of keys to items (represented by an arbitrary int) in the FIFOCache
+	// mapping of keys to items (represented by an arbitrary int)
+	// in the FIFOCache
 	keys_to_items map[string]int
 
 	// linked list of string keys in the FIFOCache
@@ -40,19 +42,8 @@ func NewFIFOCache(max_capacity int) *FIFOCache {
 	}
 }
 
-// MaxStorage returns the maximum number of items this FIFOCache can store.
-func (fifo *FIFOCache) MaxStorage() int {
-	return fifo.max_capacity
-}
-
-// RemainingStorage returns the number of items that can still be stored in this FIFOCache.
-func (fifo *FIFOCache) RemainingStorage() int {
-	return fifo.max_capacity - fifo.size
-}
-
 // Get returns a success boolean indicating if an item with the
-// key was found in the cache. This operation counts as a "use"
-// for that item. ok is true if an item was found and false otherwise.
+// key was found in the cache.
 func (fifo *FIFOCache) Get(key string) (ok bool) {
 
 	// cache is empty
@@ -78,7 +69,7 @@ func (fifo *FIFOCache) Get(key string) (ok bool) {
 // Remove removes the item associated with the given key from
 // the FIFOCache, if it exists. ok is true if an item was found
 // and false otherwise.
-func (fifo *FIFOCache) Remove(key string) (ok bool) {
+func (fifo *FIFOCache) remove(key string) (ok bool) {
 
 	// cache is empty
 	if fifo.size == 0 {
@@ -145,11 +136,6 @@ func (fifo *FIFOCache) Set(operation_timestamp int, key string) (ok bool) {
 	fifo.size++
 
 	return true
-}
-
-// Len returns the number of items in the FIFOCache.
-func (fifo *FIFOCache) Len() int {
-	return fifo.size
 }
 
 // Stats returns statistics about how many search hits and misses have occurred.

@@ -2,9 +2,7 @@ package cache
 
 import (
 	"log"
-	"math/rand"
 	"strconv"
-	"time"
 )
 
 // A HyperbolicCacheItem is an item with metadata that implicitly
@@ -18,7 +16,8 @@ type HyperbolicCacheItem struct {
 	initial_timestamp int
 }
 
-// A HyperbolicCache is a cache that uses the hyperbolic caching algorithm.
+// A HyperbolicCache is a cache that uses the hyperbolic 
+// caching algorithm.
 type HyperbolicCache struct {
 
 	// maximum number of items the cache can hold
@@ -44,8 +43,9 @@ type HyperbolicCache struct {
 func NewHyperbolicCache(max_capacity int, sample_size int) *HyperbolicCache {
 
 	if sample_size > max_capacity {
-		log.Fatal("The sampling size for the hyperbolic caching algorithm can not be " +
-			"greater than the number of items this cache can hold!")
+		log.Fatal("The sampling size for the hyperbolic caching " + 
+		"algorithm can not be greater than the number of items " +
+		"this cache can hold!")
 	}
 
 	return &HyperbolicCache{
@@ -58,7 +58,8 @@ func NewHyperbolicCache(max_capacity int, sample_size int) *HyperbolicCache {
 	}
 }
 
-// Get returns a success boolean indicating if an item with the key was found.
+// Get returns a success boolean indicating if an item 
+// with the key was found.
 func (cache *HyperbolicCache) Get(key string) (ok bool) {
 
 	// retrieve item associated with key
@@ -97,9 +98,9 @@ func (cache *HyperbolicCache) Set(operation_timestamp int, key string) (ok bool)
 	// evict an item
 	if cache.size == cache.max_capacity {
 
-		key_to_remove := cache.Evict_Which(operation_timestamp)
+		key_to_remove := cache.evict_Which(operation_timestamp)
 
-		success := cache.Remove(key_to_remove)
+		success := cache.remove(key_to_remove)
 		if !success {
 			log.Fatal("Failed to evict an item.")
 		}
@@ -117,8 +118,8 @@ func (cache *HyperbolicCache) Set(operation_timestamp int, key string) (ok bool)
 	return true
 }
 
-// Calc_P calculates the priority of an item for the eviction algorithm.
-func (item *HyperbolicCacheItem) Calc_P(eviction_timestamp int) (index float32) {
+// calc_P calculates the priority of an item for the eviction algorithm.
+func (item *HyperbolicCacheItem) calc_P(eviction_timestamp int) (priority float32) {
 
 	// calculate the time since item's
 	// initial insertion into the cache
@@ -129,8 +130,8 @@ func (item *HyperbolicCacheItem) Calc_P(eviction_timestamp int) (index float32) 
 
 }
 
-// Evict_Which() is an algorithm to select which item in the cache to evict.
-func (cache *HyperbolicCache) Evict_Which(eviction_timestamp int) (key string) {
+// evict_Which() is an algorithm to select which item in the cache to evict.
+func (cache *HyperbolicCache) evict_Which(eviction_timestamp int) (key string) {
 
 	// make sure cache is actually full before evicting
 	if cache.size != cache.max_capacity {
@@ -144,27 +145,24 @@ func (cache *HyperbolicCache) Evict_Which(eviction_timestamp int) (key string) {
 	}
 
 	// create a randomly ordered slice of the cache's current keys
-	keys := make([]string, len(cache.keys_to_items))
-	i := 0
-	for j := range cache.keys_to_items {
-		keys[i] = j
-		i++
+	// iteration over maps is random in golang
+	random_sample_keys := make([]string, cache.sample_size)
+	count := 0
+	for random_key := range cache.keys_to_items {
+		random_sample_keys[count] = random_key
+		count++
+		if count == cache.sample_size {
+			break
+		}
 	}
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(keys), func(i, j int) {
-		keys[i], keys[j] = keys[j], keys[i]
-	})
-
-	// take a sample of the randomly ordered slice
-	sampled_items := keys[0:cache.sample_size]
 
 	// find the key of the sample item with the minimum p value
-	minimum := sampled_items[0]
-	minValue := cache.keys_to_items[sampled_items[0]].Calc_P(eviction_timestamp)
+	minimum := random_sample_keys[0]
+	minValue := cache.keys_to_items[random_sample_keys[0]].calc_P(eviction_timestamp)
 
-	for _, key := range sampled_items {
-		if cache.keys_to_items[key].Calc_P(eviction_timestamp) < minValue {
-			minValue = cache.keys_to_items[key].Calc_P(eviction_timestamp)
+	for _, key := range random_sample_keys {
+		if cache.keys_to_items[key].calc_P(eviction_timestamp) < minValue {
+			minValue = cache.keys_to_items[key].calc_P(eviction_timestamp)
 			minimum = key
 		}
 	}
@@ -172,30 +170,14 @@ func (cache *HyperbolicCache) Evict_Which(eviction_timestamp int) (key string) {
 	return minimum
 }
 
-// MaxStorage returns the maximum number of items this cache can store.
-func (cache *HyperbolicCache) MaxStorage() int {
-	return cache.max_capacity
-}
-
-// RemainingStorage returns the number of items that can still be stored
-// in this cache.
-func (cache *HyperbolicCache) RemainingStorage() int {
-	return cache.max_capacity - cache.size
-}
-
 // Stats returns statistics about how many search hits and misses have occurred.
 func (cache *HyperbolicCache) Stats() *Stats {
 	return &Stats{Hits: cache.hits, Misses: cache.misses}
 }
 
-// Len returns the number of items in the cache.
-func (cache *HyperbolicCache) Len() int {
-	return cache.size
-}
-
 // Remove removes the item associated with the given key from the cache, if it exists.
 // ok is true if an item was found and false otherwise.
-func (cache *HyperbolicCache) Remove(key string) (ok bool) {
+func (cache *HyperbolicCache) remove(key string) (ok bool) {
 
 	// check if there is an item associated with key
 	_, ok = cache.keys_to_items[key]

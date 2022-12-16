@@ -4,7 +4,8 @@ import (
 	"container/list"
 )
 
-// A LRUCache is a fixed-size, in-memory cache with least-recently-used eviction.
+// A LRUCache is a fixed-size, in-memory cache with 
+// least-recently-used eviction.
 type LRUCache struct {
 
 	// total number of items the LRUCache can store
@@ -46,19 +47,8 @@ func NewLRUCache(max_capacity int) *LRUCache {
 	}
 }
 
-// MaxStorage returns the maximum number of items this LRUCache can store.
-func (lru *LRUCache) MaxStorage() int {
-	return lru.max_capacity
-}
-
-// RemainingStorage returns the number of items that can still be stored in this LRUCache.
-func (lru *LRUCache) RemainingStorage() int {
-	return lru.max_capacity - lru.size
-}
-
 // Get returns a success boolean indicating if an item with the key was found.
 // This operation counts as a "use" for that item.
-// ok is true if an item was found and false otherwise.
 func (lru *LRUCache) Get(key string) (ok bool) {
 
 	// cache is empty
@@ -87,7 +77,7 @@ func (lru *LRUCache) Get(key string) (ok bool) {
 
 // Remove removes an item with the given key from the LRUCache, if it exists,
 // and returns a success boolean. ok is true if an item was found and false otherwise.
-func (lru *LRUCache) Remove(key string) (ok bool) {
+func (lru *LRUCache) remove(key string) (ok bool) {
 
 	// cache is empty
 	if lru.size == 0 {
@@ -159,11 +149,6 @@ func (lru *LRUCache) Set(operation_timestamp int, key string) (ok bool) {
 	lru.size += 1
 
 	return true
-}
-
-// Len returns the number of items in the LRUCache.
-func (lru *LRUCache) Len() int {
-	return lru.size
 }
 
 // Stats returns statistics about how many search hits and misses have

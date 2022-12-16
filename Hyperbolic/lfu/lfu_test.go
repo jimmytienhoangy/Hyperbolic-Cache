@@ -1,8 +1,8 @@
 /******************************************************************************
- * lfu_test.go
+ * hyperbolic_test.go
  * Authors: Reuben Agogoe, Stephen Dong, Jimmy Hoang
  * Usage: `go test`  or  `go test -v`
- * Description: A unit testing suite for lfu.go.
+ * Description: A testing suite for comparing hyperbolic caching to FIFO, LRU, and LFU.
  ******************************************************************************/
 
 package cache
@@ -12,364 +12,194 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
 )
 
-/******************************************************************************/
-/*                                Constants                                   */
-/******************************************************************************/
+// // TestHitRate computes the hit miss ratio of the FIFO, LFU, LRU, and Hyperbolic
+// // caching algorithms on traces from https://github.[com/twitter/cache-trace.
+func TestHitRate(t *testing.T) {
 
-/******************************************************************************/
-/*                                  Tests                                     */
-/******************************************************************************/
+	// traces we will use for testing and evaluation
+	traces_to_process := []string{"test.tr"}
 
-// Test to see if a normal LRU cache that doesn't reach capacity is working
-// (get and set methods)
-func TestHyperbolic(t *testing.T) {
-	capacity := 64
-	hyperbolic := NewLFU(capacity)
+	// for i := 2; i < 17; i++ {
+	// 	cluster := "cluster0"
 
-	for i := 0; i < 4; i++ {
-		key := fmt.Sprintf("key%d", i)
-		val := len([]byte(key))
+	// 	if i < 10 {
+	// 		cluster += "0" + strconv.Itoa(i)
+	// 	} else {
+	// 		cluster += strconv.Itoa(i)
+	// 	}
 
-		ok := hyperbolic.Set(key, val)
-		if !ok {
-			t.Errorf("Failed to add binding with key: %s", key)
-			t.FailNow()
-		}
+	// 	traces_to_process = append(traces_to_process, cluster)
+	// }
 
-		res, _ := hyperbolic.Get(key)
-		// if !bytesEqual(res, val) {
-		// 	t.Errorf("Wrong value %s for binding with key: %s", res, key)
-		// 	t.FailNow()
-		// }
+	// from the academic paper on Hypbolic caching
+	sample_size := 64
 
-		if res != val {
-			t.Errorf("Wrong value %d for binding with key: %s", res, key)
-			t.FailNow()
+	// from Caches Precept
+	//max_capacities := []int{80, 160, 320, 640, 1280, 2560, 5120, 10240}
+	max_capacities := []int{100}
 
+	for _, max_capacity := range max_capacities {
+		for _, trace := range traces_to_process {
+
+			//trace_file := filepath.Join("traces", trace)
+
+			fmt.Println("Testing max capacity: ", max_capacity, " ---")
+
+			RunCacheExperiment(trace, "FIFO", max_capacity, sample_size)
+			RunCacheExperiment(trace, "LRU", max_capacity, sample_size)
+			RunCacheExperiment(trace, "HYPERBOLIC", max_capacity, sample_size)
+			RunCacheExperiment(trace, "LFU", max_capacity, sample_size)
+
+			fmt.Println()
 		}
 	}
 }
 
-// // Check to see that eviction is occuring at all
-// func TestHyperbolic2(t *testing.T) {
-// 	capacity := 64
-// 	lru := NewLru(capacity)
-// 	checkCapacity(t, lru, capacity)
+// RunCacheExperiment runs an experiment on an input trace file using
+// the given cache type, max cache capacity, and (if applicable) sample size.
+func RunCacheExperiment(trace_file string, cache_type string, capacity int, sample_size int) {
 
-// 	for i := 0; i < 8; i++ {
-// 		key := fmt.Sprintf("key%d", i)
-// 		val := []byte(key)
-// 		ok := lru.Set(key, val)
-// 		if !ok {
-// 			t.Errorf("Failed to add binding with key: %s", key)
-// 			t.FailNow()
-// 		}
+	// open the trace file
+	file, err := os.Open(trace_file)
 
-// 	}
-
-// 	// here is where the eviction is happening
-// 	for i := 9; i < 10; i++ {
-// 		key := fmt.Sprintf("key%d", i)
-// 		val := []byte(key)
-// 		ok := lru.Set(key, val)
-// 		if !ok {
-// 			t.Errorf("Failed to evict in order to make space for new caces %s", key)
-// 			t.FailNow()
-// 		}
-// 	}
-// }
-
-// // Test a 0 capacity lru
-// func TestHyperbolic3(t *testing.T) {
-// 	capacity := 0
-// 	lru := (capacity)
-// 	checkCapacity(t, lru, capacity)
-
-// 	// try to set bindings
-// 	for i := 0; i < 3; i++ {
-// 		key := fmt.Sprintf("key%d", i)
-// 		val := []byte(key)
-// 		ok := lru.Set(key, val)
-
-// 		if ok {
-// 			t.Errorf("There should not be any bindings inside the lru!")
-// 			t.FailNow()
-// 		}
-// 	}
-// }
-
-// // Check to see if a new lru returns a lru of empty size
-// func TestHyperbolic4(t *testing.T) {
-// 	capacity := 16
-// 	lru := NewLru(capacity)
-// 	checkCapacity(t, lru, capacity)
-
-// 	// check if new lru is empty size
-// 	if lru.Len() != 0 {
-// 		t.Errorf("New lru cache does not initialize to empty size!")
-// 		t.FailNow()
-// 	}
-// }
-
-// Test a lot of stuff!
-// func TestHyperbolic5(t *testing.T) {
-// 	capacity := 100
-// 	lru := NewHyperbolicCache(capacity)
-// 	checkCapacity(t, lru, capacity)
-
-// 	// test states and cities to insert as bindings
-// 	var test_states [5]string
-// 	var test_cities [5]string
-
-// 	test_states[0] = "Alabama"     // 7
-// 	test_states[1] = "Louisiana"   // 9
-// 	test_states[2] = "Mississippi" // 11
-// 	test_states[3] = "Florida"     // 7
-// 	test_states[4] = "Tennessee"   // 9
-
-// 	test_cities[0] = "Mobile"         // 6
-// 	test_cities[1] = "New Orleans"    // 11
-// 	test_cities[2] = "Pass Christian" // 14
-// 	test_cities[3] = "Orlando"        // 7
-// 	test_cities[4] = "Chattanooga"    // 11
-
-// 	// set bindings and check remaining storage at some steps
-// 	for i := 0; i < 5; i++ {
-// 		val := []byte(test_cities[i])
-// 		ok := lru.Set(test_states[i], val)
-// 		if !ok {
-// 			t.Errorf("Failed to add binding with key: %s", test_states[i])
-// 			t.FailNow()
-// 		}
-// 		if i == 0 && lru.RemainingStorage() != 87 {
-// 			t.Errorf("Remaining storage should be 87.")
-// 			t.FailNow()
-// 		}
-// 		if i == 4 && lru.RemainingStorage() != 8 {
-// 			t.Errorf("Remaining storage should be 8.")
-// 			t.FailNow()
-// 		}
-// 	}
-
-// 	// remove a binding and check storage and binding count
-// 	lru.Remove("Alabama")
-// 	if lru.RemainingStorage() != 21 {
-// 		t.Errorf("Remaining storage should be 21.")
-// 		t.FailNow()
-// 	}
-// 	// if lru.Len() != 4 {
-// 	// 	t.Errorf("There should be 4 bindings.")
-// 	// // 	t.FailNow()
-// 	// }
-
-// 	// update the value for an existing key
-// 	lru.Set("Mississippi", []byte("Biloxi"))
-
-// 	// // check number of bindings and storage
-// 	// if lru.Len() != 4 {
-// 	// 	t.Errorf("There should still be 4 bindings.")
-// 	// 	t.FailNow()
-// 	// }
-// 	if lru.RemainingStorage() != 29 {
-// 		t.Errorf("Remaining storage should be 29.")
-// 		t.FailNow()
-// 	}
-
-// 	// test eviction
-// 	lru.Set("California", []byte("San Francisco")) // 23
-// 	lru.Set("Massachusetts", []byte("Boston"))     // 19
-
-// 	_, another_ok := lru.Get("Louisiana")
-
-// 	if another_ok {
-// 		t.Errorf("Louisiana should have been evicted.")
-// 		t.FailNow()
-// 	}
-
-// 	fmt.Println(lru.Stats())
-
-// }
-
-// sleep for just 1 ms lol
-func wait() {
-	time.Sleep(100 * time.Millisecond)
-}
-
-// Test whether the hyperbolic function is working
-func TestHyperbolicFunction(t *testing.T) {
-	capacity := 10
-	cache := NewLFU(capacity)
-	checkCapacity(t, cache, capacity)
-
-	// test states and cities to insert as bindings
-	var values [5]string
-
-	values[0] = "a" // 7
-	values[1] = "b" // 9
-	values[2] = "c" // 11
-	values[3] = "d" // 7
-	values[4] = "e" // 9
-
-	// set bindings and check remaining storage at some steps
-	for i := 0; i < 5; i++ {
-		key := values[i]
-		val := len([]byte(key))
-		ok := cache.Set(key, val)
-		if !ok {
-			t.Errorf("Failed to add binding with key: %s", values[i])
-			t.FailNow()
-		}
-		wait()
-
-	}
-	fmt.Println("test")
-	cache.Get("b")
-	wait()
-	cache.Get("a")
-	wait()
-	cache.Get("a")
-	wait()
-	fmt.Println("test2")
-
-	cache.Set("f", len([]byte("f")))
-	fmt.Println("test2")
-
-	for j := range cache.keys_to_items {
-		fmt.Println(j)
-	}
-
-	_, ok := cache.Get("c")
-
-	if ok {
-		t.Errorf("c should have been evicted.")
-		t.FailNow()
-	}
-
-	fmt.Println(cache.Stats())
-
-}
-
-// Test whether the hyperbolic function is working
-func TestHyperbolicFunction2(t *testing.T) {
-	capacity := 10
-	cache := NewLFU(capacity)
-
-	// test states and cities to insert as bindings
-	var values [3]string
-
-	values[0] = "a"
-	values[1] = "bc"
-	values[2] = "cd"
-
-	// set bindings and check remaining storage at some steps
-	for i := 0; i < 3; i++ {
-		key := values[i]
-		val := len([]byte(key))
-		ok := cache.Set(key, val)
-		if !ok {
-			t.Errorf("Failed to add binding with key: %s", values[i])
-			t.FailNow()
-		}
-		if i == 0 {
-			_, ok := cache.Get("b")
-
-			if ok {
-				fmt.Println("Error: item with key 'b' found.")
-			}
-		}
-		wait()
-	}
-
-	cache.Get("a")
-	wait()
-
-	cache.Get("bc")
-	wait()
-
-	cache.Get("cd")
-	wait()
-
-	cache.Get("cd")
-	wait()
-
-	cache.Get("bc")
-	wait()
-
-	cache.Get("bc")
-	wait()
-
-	cache.Set("de", len([]byte("de")))
-	wait()
-
-	_, ok1 := cache.Get("a")
-
-	if ok1 {
-		t.Errorf("Item with key 'a' should have been evicted.")
-		t.FailNow()
-	}
-
-	_, ok2 := cache.Get("cd")
-
-	for j := range cache.keys_to_items {
-		fmt.Println(j)
-	}
-
-	if ok2 {
-		t.Errorf("Item with key 'cd' should have been evicted.")
-		t.FailNow()
-	}
-
-	fmt.Println(cache.Stats())
-
-}
-
-// func TestHyperbolicFunction3(t *testing.T) {
-
-// }
-
-func TestHyperbolicFunction3(t *testing.T) {
-	file, err := os.Open("test.tr")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// set the capacity
-	capacity := 1000 //(?)
-	hyperbolic_cache := NewLFU(capacity)
+	// create a new cache_type cache
+	var cache Cache
+	cache = NewLFUCache(capacity)
 
+	// read each line of the trace file, parsing the relevant fields
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	// optionally, resize scanner's capacity for lines over 64K, see next example
+
 	for scanner.Scan() {
 
 		text := scanner.Text()
 
-		parsed_text := strings.Split(text, " ")
+		// format: timestamp, anonymized key, key size,
+		// value size, client id, operation, TTL
 
-		_, key, size := parsed_text[0], parsed_text[1], parsed_text[2]
+		line := strings.Split(text, " ")
 
-		_, ok := hyperbolic_cache.Get(key)
+		_, key, _ :=
+			line[0], line[1], line[2]
 
-		if !ok {
-			value, _ := strconv.Atoi(size)
-			hyperbolic_cache.Set(key, value)
+			// convert string timestamp to int
+			//operation_timestamp, _ := strconv.Atoi(timestamp)
+
+			// only handle get and set operations
+		_, get_success := cache.Get(key)
+
+		// set if get failed
+		if !get_success {
+			set_success := cache.Set(key)
+
+			if !set_success {
+				log.Fatal("Failed to complete the set request.")
+			}
 		}
-		time.Sleep(1 * time.Millisecond)
+		time.Sleep(2 * time.Millisecond)
 
-		//fmt.Println(_ + "|" + key + "|" + size)
-
-		//fmt.Println("test")
 	}
 
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println(hyperbolic_cache.Stats())
+	// get stats and print them out
+	stats := cache.Stats()
+	// fmt.Println(stats)
+	fmt.Println(cache_type, " Hit Ratio: ",
+		float32(stats.Hits)/(float32(stats.Hits+stats.Misses)))
 }
+
+//  func TestLFU(t *testing.T) {
+
+// 	 lfu := NewLFUCache(5)
+
+// 	 lfu.Set(1, "a")
+// 	 lfu.Set(1, "a")
+
+// 	 lfu.Set(1, "b")
+
+// 	 lfu.Set(1, "c")
+
+// 	 lfu.Set(1, "d")
+
+// 	 lfu.Set(1, "e")
+
+// 	 fmt.Println(lfu.size, "shoul be 5")
+
+// 	 lfu.Get("b")
+// 	 lfu.Get("b")
+
+// 	 lfu.Get("c")
+
+// 	 lfu.Get("d")
+// 	 lfu.Get("d")
+// 	 lfu.Get("d")
+
+// 	 lfu.Get("e")
+// 	 lfu.Get("e")
+// 	 lfu.Get("e")
+// 	 lfu.Get("e")
+
+// 	 lfu.Set(1, "f")
+// 	 lfu.Set(1, "g")
+
+// 	 fmt.Println(lfu.size)
+
+// 	 ok := lfu.Get("a")
+// 	 ok1 := lfu.Get("b")
+// 	 ok2 := lfu.Get("c")
+// 	 ok3 := lfu.Get("d")
+// 	 ok4 := lfu.Get("e")
+
+// 	 if !ok {
+// 		 fmt.Println("A: CORRECT!")
+// 	 }
+// 	 if !ok1 {
+// 		 fmt.Println("B: INCORRECT!")
+// 	 }
+// 	 if !ok2 {
+// 		 fmt.Println("C: CORRECT!")
+// 	 }
+// 	 if !ok3 {
+// 		 fmt.Println("D: INCORRECT!")
+// 	 }
+// 	 if !ok4 {
+// 		 fmt.Println("E: INCORRECT!")
+// 	 }
+
+// 	 stats := lfu.Stats()
+// 	 fmt.Println(stats)
+
+//  }
+
+//  func TestLFU2(t *testing.T) {
+
+// 	 fmt.Println("STEPHENS CODE -------")
+// 	 lfu := NewLFUCache(3)
+// 	 fmt.Println(lfu.Get("a"))
+// 	 lfu.Set(1, "a")
+
+// 	 fmt.Println(lfu.Get("b"))
+// 	 lfu.Set(1, "b")
+
+// 	 fmt.Println(lfu.Get("c"))
+// 	 lfu.Set(1, "c")
+
+// 	 fmt.Println(lfu.Get("c"))
+// 	 fmt.Println(lfu.Get("c"))
+// 	 fmt.Println(lfu.Get("a"))
+// 	 lfu.Set(1, "d")
+// 	 fmt.Println(lfu.Get("a"))
+// 	 fmt.Println(lfu.Get("b"))
+//  }

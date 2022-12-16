@@ -1,15 +1,28 @@
 package cache
 
 import (
-	"log"
-	"math"
+	"container/list"
 )
 
 // A LFUCacheItem is an item with metadata that implicitly
 // holds a value of set size. It goes in a LFUCache.
 type LFUCacheItem struct {
 
-	// how many times the item has been accessed
+	// the item's key
+	key string
+
+	// pointer to a struct indicating this item's access count
+	accessParent *list.Element
+}
+
+// An AccessNode is the connection between an access count and
+// the items with that access count.
+type AccessNode struct {
+
+	// items with this access item's access count
+	items_with_access_count map[*LFUCacheItem]byte
+
+	// the access count associated with this access item
 	access_count int
 }
 
@@ -25,6 +38,9 @@ type LFUCache struct {
 	// map of keys to items in the cache
 	keys_to_items map[string]*LFUCacheItem
 
+	// linked list of access counts
+	access_counts *list.List
+
 	// number of hits
 	hits int
 
@@ -39,6 +55,7 @@ func NewLFUCache(max_capacity int) *LFUCache {
 		max_capacity:  max_capacity,
 		size:          0,
 		keys_to_items: make(map[string]*LFUCacheItem, max_capacity),
+		access_counts: list.New(),
 		hits:          0,
 		misses:        0,
 	}
@@ -54,7 +71,7 @@ func (cache *LFUCache) Get(key string) (ok bool) {
 		cache.hits += 1
 
 		// update access count of item
-		item.access_count += 1
+		cache.Increment(item)
 
 	} else {
 		cache.misses += 1
@@ -67,101 +84,129 @@ func (cache *LFUCache) Get(key string) (ok bool) {
 
 // Set adds/updates an item with the given key in the cache
 // and returns a success boolean.
-func (cache *LFUCache) Set(operation_timestamp int, key string) (ok bool) {
+func (lfu *LFUCache) Set(operation_timestamp int, key string) (ok bool) {
 
-	// operation_timestamp is ignored
+	// operation_timestamp is ignored for the purposes of this project
 
 	// check if an item with that key already exists
-	existing_item, ok := cache.keys_to_items[key]
+	existing_item, ok := lfu.keys_to_items[key]
 
 	if ok {
 		// update access count of item
-		existing_item.access_count += 1
+		lfu.Increment(existing_item)
 
 		return true
 	}
 
 	// if not enough space and an item with the key does not exist,
 	// evict an item
-	if cache.size == cache.max_capacity {
-
-		key_to_remove := cache.Evict_Which()
-
-		success := cache.Remove(key_to_remove)
-		if !success {
-			log.Fatal("Failed to evict an item.")
-		}
-
+	if lfu.size == lfu.max_capacity {
+		lfu.Evict()
 	}
 
 	// add new item with key
-	cache.keys_to_items[key] = &LFUCacheItem{
-		access_count: 1}
+	new_item := &LFUCacheItem{key: key}
+	lfu.keys_to_items[key] = new_item
+
+	// update access for the new item
+	lfu.Increment(new_item)
 
 	// update size of cache
-	cache.size += 1
+	lfu.size += 1
 
 	return true
 }
 
-// Evict_Which() is an algorithm to select which item in the cache to evict.
-func (cache *LFUCache) Evict_Which() (key string) {
+// Increment updates the access count of a given item.
+func (lfu *LFUCache) Increment(item *LFUCacheItem) {
 
-	// make sure cache is actually full before evicting
-	if cache.size != cache.max_capacity {
-		log.Fatal("Should not be evicting when cache is not full.")
+	// check if the item is already associated with an access count node
+	currentAccessNode := item.accessParent
+
+	// find new access count value and corresponding node
+	var nextAccessCount int
+	var nextAccessNode *list.Element
+
+	// item does not have an access count node (new insert!)
+	if currentAccessNode == nil {
+		// first access
+		nextAccessCount = 1
+		// item's access count node should be the very front (1st!)
+		nextAccessNode = lfu.access_counts.Front()
+	} else {
+		// increment access count by 1
+		nextAccessCount = currentAccessNode.Value.(*AccessNode).access_count + 1
+
+		// move to next access count node (that may not exist)
+		nextAccessNode = currentAccessNode.Next()
 	}
 
-	// iterate through keys_to_items to find the item with
-	// the least number of accesses
-	minimum := ""
-	minValue := math.MaxInt32
+	// next access count node does not exist or there is a gap:
+	// for example, a key has 6 accesses and another with 8 accesses, but no key has 7 accesses anymore
+	if nextAccessNode == nil || nextAccessNode.Value.(*AccessNode).access_count != nextAccessCount {
 
-	for j := range cache.keys_to_items {
-		if cache.keys_to_items[j].access_count < minValue {
-			minValue = cache.keys_to_items[j].access_count
-			minimum = j
+		// create a new access count node for the missing access count
+		newAccessNode := new(AccessNode)
+		newAccessNode.access_count = nextAccessCount
+		newAccessNode.items_with_access_count = make(map[*LFUCacheItem]byte)
+
+		// add new access count node to the front if this is a new insert
+		if currentAccessNode == nil {
+			nextAccessNode = lfu.access_counts.PushFront(newAccessNode)
+
+		} else {
+			// add new access count node after the current one
+			nextAccessNode = lfu.access_counts.InsertAfter(newAccessNode, currentAccessNode)
 		}
 	}
 
-	return minimum
+	// set the new parent for the item that is being incremented and
+	// add it to the parent's list of entries
+	item.accessParent = nextAccessNode
+	nextAccessNode.Value.(*AccessNode).items_with_access_count[item] = 1
+
+	// remove the item from the entries of its old access count node (currentAccessNode)
+	if currentAccessNode != nil {
+		lfu.remove(currentAccessNode, item)
+	}
 }
 
-// MaxStorage returns the maximum number of items this cache can store.
-func (cache *LFUCache) MaxStorage() int {
-	return cache.max_capacity
-}
+// Evict evicts the least frequently used item from the cache.
+func (lfu *LFUCache) Evict() {
 
-// RemainingStorage returns the number of items that can still be stored
-// in this cache.
-func (cache *LFUCache) RemainingStorage() int {
-	return cache.max_capacity - cache.size
+	// get the smallest access count node
+	if smallestAccessNode := lfu.access_counts.Front(); smallestAccessNode != nil {
+
+		// for all the entries of this access count node
+		for entry := range smallestAccessNode.Value.(*AccessNode).items_with_access_count {
+
+			// delete the item from the cache
+			delete(lfu.keys_to_items, entry.key)
+
+			// remove the item from all lists
+			lfu.remove(smallestAccessNode, entry)
+
+			lfu.size--
+		}
+	}
 }
 
 // Stats returns statistics about how many search hits and misses have occurred.
-func (cache *LFUCache) Stats() *Stats {
-	return &Stats{Hits: cache.hits, Misses: cache.misses}
-}
-
-// Len returns the number of items in the cache.
-func (cache *LFUCache) Len() int {
-	return cache.size
+func (lfu *LFUCache) Stats() *Stats {
+	return &Stats{Hits: lfu.hits, Misses: lfu.misses}
 }
 
 // Remove removes the item associated with the given key from the cache, if it exists.
-// ok is true if an item was found and false otherwise.
-func (cache *LFUCache) Remove(key string) (ok bool) {
+func (lfu *LFUCache) remove(listItem *list.Element, item *LFUCacheItem) {
 
-	// check if there is an item associated with key
-	_, ok = cache.keys_to_items[key]
-	if !ok {
-		return false
+	accessNode := listItem.Value.(*AccessNode)
+
+	// remove the item from its corresponding access count node's entries
+	delete(accessNode.items_with_access_count, item)
+
+	// this access node no longer has entries, so remove it from the list
+	// of access counts
+	if len(accessNode.items_with_access_count) == 0 {
+		lfu.access_counts.Remove(listItem)
 	}
-
-	// remove the key from the cache
-	delete(cache.keys_to_items, key)
-
-	cache.size -= 1
-
-	return true
 }
